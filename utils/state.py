@@ -3,6 +3,7 @@ class AppState:
     """Global state management for the app."""
     
     def __init__(self):
+        self.spinner = None
         self.image_display = None
         self.metadata_input = None
         self.exif_fallback = None
