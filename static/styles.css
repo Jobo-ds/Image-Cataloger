@@ -1,0 +1,4 @@
+/* Ensure padding inside autogrow textareas */
+.q-textarea .q-field__native {
+    padding: 20px !important;
+}

@@ -31,7 +31,7 @@ atexit.register(on_close)
 ui.run(
     title="EXIF/XMP Metadata Editor",
     native=False,  # Opens in a standalone window
-    window_size=(1200, 800),  # Set initial window size
+    #window_size=(1200, 800),  # Set initial window size
     fullscreen=False,  # Prevent fullscreen on startup
     dark=True
 )

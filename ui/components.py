@@ -18,39 +18,19 @@ def create_metadata_section():
 		with ui.tab_panel(editor):
 			dev_placeholder = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit."
 			prod_placeholder = "No image description."
-			with ui.row().classes("w-full justify-center"):
-				metadata_input = ui.textarea(placeholder=dev_placeholder).classes("w-full max-w-2xl").props("filled square autogrow v-model='text'").style("background:#343434;")
-		with ui.tab_panel(xmp_view):
-			ui.label('Second tab')    
-		with ui.tab_panel(exif_view):
-			ui.label('Second tab')                 
-	
-	# Outer container to ensure proper alignment
-	with ui.column().classes("w-full max-w-3xl mx-auto p-4 bg-gray-800 rounded-md shadow-md"):
-		
-		# Row 1: Label for Image Description
-		with ui.row().classes("w-full justify-start"):
-			ui.label("Image Description").classes("text-white font-bold text-lg")
-
-		# Row 2: Metadata Input (User editable)
-
-
-		# Row 3: Reset Button (Aligned Right)
-		with ui.row().classes("w-full justify-end"):
-			reset_button = ui.button("⟲ Reset", on_click=lambda: reset_metadata(metadata_input)).classes(
+			with ui.row().classes("w-full justify-center min-height-screen"):
+				validations =  {'Exif limit: 255 characters.': lambda value: len(value) < 255}
+				metadata_input = ui.textarea(placeholder=prod_placeholder, validation=validations, value=dev_placeholder).classes("w-full max-w-2xl").props("filled square autogrow v-model='text'")
+				reset_button = ui.button("⟲ Reset", on_click=lambda: reset_metadata(metadata_input)).classes(
 				"bg-red-500 text-white rounded-md px-4 py-2"
 			)
-
-		# Row 4: Label for EXIF Fallback
-		with ui.row().classes("w-full justify-start mt-2"):
-			ui.label("EXIF Fallback (Read-Only)").classes("text-gray-400")
-
-		# Row 5: EXIF Fallback (Read-Only)
-		with ui.row().classes("w-full"):
-			exif_fallback = ui.textarea().props("readonly").classes(
-				"w-full max-w-2xl h-24 bg-gray-700 text-gray-400 rounded-md p-2"
-			)
-
+		with ui.tab_panel(xmp_view):
+			with ui.row().classes("w-full justify-center min-height-screen"):
+				xmp_view = ui.textarea(placeholder=prod_placeholder, validation=validations, value=dev_placeholder).classes("w-full max-w-2xl").props("filled readonly disable square autogrow v-model='text'")  
+		with ui.tab_panel(exif_view):
+			with ui.row().classes("w-full justify-center min-height-screen"):
+				exif_view = ui.textarea(placeholder=prod_placeholder, validation=validations, value=dev_placeholder).classes("w-full max-w-2xl").props("filled readonly disable square autogrow v-model='text'")  
+	
 	def reset_metadata(field):
 		"""Reset the metadata field to the original value and save it."""
 		field.value = state.original_metadata  # Reset field to original metadata
@@ -68,7 +48,7 @@ def create_metadata_section():
 		set_xmp_description(state.current_image, new_description)  # Save to XMP
 		set_exif_description(state.current_image, ascii_description)  # Save ASCII to EXIF
 
-		exif_fallback.value = ascii_description  # Update fallback view
+		exif_view.value = ascii_description  # Update fallback view
 
 		if reset:
 			print("✅ Reset metadata saved successfully!")
@@ -77,11 +57,12 @@ def create_metadata_section():
 
 	metadata_input.on('blur', save_metadata)  # Autosave on blur
 
-	return metadata_input, exif_fallback, reset_button
+	return metadata_input, exif_view, reset_button
 
 def create_navigation_controls():
 	"""Create navigation buttons for previous/next image."""
 	prev_button = ui.button("← Previous", on_click=lambda: navigate_image(-1))
+	image_counter = ui.label("8 / 24").classes("mx-4 text-gray-700 text-lg")  # Image counter
 	next_button = ui.button("Next →", on_click=lambda: navigate_image(1))
 
-	return prev_button, next_button
+	return prev_button, image_counter, next_button

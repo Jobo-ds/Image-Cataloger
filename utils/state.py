@@ -12,6 +12,7 @@ class AppState:
         self.next_button = None
         self.current_image = None
         self.original_metadata = None
+        self.image_counter = None
 
 # Create a single instance of AppState to be shared across the app
 state = AppState()

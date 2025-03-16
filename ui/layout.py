@@ -1,11 +1,14 @@
-from nicegui import ui
+from nicegui import ui, app
 from ui.components import create_metadata_section, create_navigation_controls
 from utils.file_utils import open_image
 from utils.state import state
 
 def setup_ui():
     """Setup the main UI layout based on the Figma design."""
-    ui.query('.nicegui-content').classes('p-0 gap-0')
+    ui.query('.nicegui-content').classes('p-0 gap-0') # Remove ssystme gaps from nicegui
+    # Load custom styles
+    app.add_static_files('/static', 'static')
+    ui.add_head_html('<link rel="stylesheet" href="static/styles.css">') 
 
     # Full-page flex container
     with ui.column().classes('h-screen w-full flex flex-col'):
@@ -25,5 +28,5 @@ def setup_ui():
 
         # Navigation (fixed height, sticks to bottom)
         with ui.row().classes('w-full p-4 justify-center shrink-0 border border-yellow-500'):
-            state.prev_button, state.next_button = create_navigation_controls()
-            ui.label("8 / 24").classes("mx-4 text-gray-700 text-lg")  # Image counter
+            state.prev_button, state.image_counter, state.next_button = create_navigation_controls()
+            
