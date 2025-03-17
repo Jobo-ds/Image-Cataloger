@@ -1,8 +1,24 @@
-# main.py 🚀
+# main.py
 import os
 import atexit
 from nicegui import ui, app
+from collections import OrderedDict
+
+from ui.spinners import spinner
+from ui.dialogs import ErrorDialog
+
 from ui.layout import setup_ui
+from utils.state import state
+
+# Initialize AppState
+state.app_spinner = spinner()
+state.image_spinner = spinner()
+state.editor_spinner = spinner()
+state.save_spinner = spinner()
+
+state.image_buffer = OrderedDict()
+
+state.error_dialog = ErrorDialog()
 
 # Initialize the UI
 setup_ui()

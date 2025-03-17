@@ -11,7 +11,7 @@ def get_xmp_description(image_path):
 			return xmp_data
 	except Exception as e:
 		print(f"XMP Read Error: {e}")
-		return ""
+		return None
 
 def set_xmp_description(image_path, description):
 	"""Write XMP metadata to an image."""
