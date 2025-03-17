@@ -13,7 +13,7 @@ def get_image_list():
     state.total_images_folder = len(images)
     return images
 
-def navigate_image(direction):
+async def navigate_image(direction):
     """Move to the next or previous image."""
     images = get_image_list()
     if not images:
@@ -36,4 +36,4 @@ def navigate_image(direction):
         state.metadata_input.run_method("on", "blur")  # Trigger autosave
 
     # Load the new image
-    load_image(images[new_index])
+    await load_image(images[new_index])

@@ -1,3 +1,4 @@
+import asyncio
 from nicegui import ui, app
 from ui.editor import create_metadata_section
 from ui.navigation import create_navigation_controls
@@ -6,7 +7,7 @@ from utils.file_utils import open_image
 from utils.state import state
 
 def setup_ui():
-    ui.query('.nicegui-content').classes('p-0 gap-0 bg-slate-700') # Remove ssystme gaps from nicegui
+    ui.query('.nicegui-content').classes('p-0 gap-0 bg-neutral-800') # Remove ssystme gaps from nicegui
     # Load custom styles
     app.add_static_files('/static', 'static')
     ui.add_head_html('<link rel="stylesheet" href="static/styles.css">')
@@ -22,14 +23,18 @@ def setup_ui():
 
         # Editor (fixed height)
         with ui.row().classes('w-full justify-center shrink-0 border border-red-500'):
-            state.metadata_input, state.metadata_exif, state.metadata_xmp, state.reset_button = create_metadata_section()
+            elements = create_metadata_section()
+            state.metadata_input = elements["input"]
+            state.metadata_exif = elements["exif"]
+            state.metadata_xmp = elements["xmp"]
+            state.undo_button = elements["undo"]
 
         # Navigation bar (fixed height, sticks to bottom)
         with ui.row().classes('w-full p-4 justify-between items-center border border-yellow-500'):
             
             # Left Section: Open Image button (stays left-aligned)
             with ui.column():
-                ui.button("Open Image", icon="sym_o_folder_open", on_click=open_image)
+                ui.button("Open Image", icon="sym_o_folder_open", on_click=lambda: asyncio.create_task(open_image()))
 
             # Center Section: Navigation controls (properly centered)
             with ui.column().classes('flex-1 flex justify-center'):

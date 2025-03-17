@@ -1,61 +1,76 @@
-# metadata/exif_handler.py 📝
-from PIL import Image
-import piexif
+# metadata/exif_handler.py 
+import asyncio
+import os
+import sys
 from utils.state import state
 
-def get_exif_description(image_path):
+async def get_exif_description(image_path):
 	"""
-	Extract EXIF description from an image. Returns an empty string if missing.
+	Extract EXIF description asynchronously using ExifTool.
 	"""
 	try:
-		with Image.open(image_path) as img:
-			# Ensure the image has EXIF data
-			exif_data = img.info.get("exif", b"")
-			if not exif_data:
-				return ""
+		exiftool_path = os.path.abspath(state.exiftool_path)  # Ensure absolute path
+		print(exiftool_path)
 
-			# Load EXIF data using piexif
-			exif_dict = piexif.load(exif_data)
-			description_bytes = exif_dict["0th"].get(piexif.ImageIFD.ImageDescription, b"")
+		# Ensure the file actually exists before calling subprocess
+		if not os.path.isfile(exiftool_path):
+			raise FileNotFoundError(f"ExifTool not found at {exiftool_path}")
+		print(image_path)
 
-			if not description_bytes:
-				return ""
+		process = await asyncio.create_subprocess_exec(
+			exiftool_path, "-EXIF:ImageDescription", "-b", image_path,
+			stdin=asyncio.subprocess.DEVNULL,
+			stdout=asyncio.subprocess.PIPE,
+			stderr=asyncio.subprocess.PIPE
+		)
+		stdout, stderr = await process.communicate()
+		print("STDOUT:", stdout.decode().strip())
+		print("STDERR:", stderr.decode().strip())
 
-			# Decode EXIF description
-			description = description_bytes.decode("utf-8", errors="ignore")
-			return description
+		if process.returncode != 0:
+			print(f"ExifTool failed with code {process.returncode}")
+			return "No data in ImageDescription tag."
+
+		return stdout.decode().strip() or "No data in ImageDescription tag."
+
 	except Exception as e:
-		state.error_dialog.show(f"Could not read EXIF data.", "The exif data could be corrupted.", f"{e}")
-		print(f"EXIF Read Error: {e}")
+		print(f"Error: {e}")  # Print error for debugging
+		state.error_dialog.show(
+			"ExifTool Execution Failed (Exif)",
+			"Could not execute ExifTool and get ImageDescription from Exif. Ensure the bundled ExifTool is present and accessible.",
+			str(e)
+		)
 		return ""
 
-def set_exif_description(image_path, description):
+
+async def set_exif_description(image_path, new_description):
 	"""
-	Write EXIF description to an image, properly detecting existing EXIF data.
+	Modify EXIF description asynchronously using ExifTool.
 	"""
+
 	try:
-		with Image.open(image_path) as img:
-			if img.format not in ["JPEG", "TIFF"]:  # EXIF is not supported in PNG
-				return
+		process = await asyncio.create_subprocess_exec(
+			state.exiftool_path, f"-EXIF:ImageDescription={new_description}", "-overwrite_original", str(image_path),
+			stdout=asyncio.subprocess.PIPE,
+			stderr=asyncio.subprocess.PIPE
+		)
+		stdout, stderr = await process.communicate()
 
-			# Try loading EXIF data correctly
-			try:
-				exif_data = img.info.get("exif", None)
-				exif_dict = piexif.load(exif_data) if exif_data else {"0th": {}, "Exif": {}, "Interop": {}, "GPS": {}, "1st": {}, "thumbnail": None}
-			except Exception:
-				exif_dict = {"0th": {}, "Exif": {}, "Interop": {}, "GPS": {}, "1st": {}, "thumbnail": None}
+		if process.returncode != 0:
+			error_message = stderr.decode().strip()
+			state.error_dialog.show(
+				"Could not write EXIF data.",
+				"An error occurred while modifying the EXIF metadata. Please check if the file is valid and not locked.",
+				error_message
+			)
+			return False
 
-			# Ensure the description is bytes-encoded
-			exif_dict["0th"][piexif.ImageIFD.ImageDescription] = description.encode("utf-8")
-
-			# Convert the EXIF data back to bytes
-			exif_bytes = piexif.dump(exif_dict)
-
-			# Save the image with updated EXIF data
-			img.save(image_path, exif=exif_bytes)
-
-			print("EXIF metadata updated successfully!") 
+		return True
 
 	except Exception as e:
-		state.error_dialog.show(f"Could not write EXIF data.", "The app was unable to save the EXIF data to the image.", f"{e}")
-		print(f"EXIF Write Error: {e}")
+		state.error_dialog.show(
+			"ExifTool Execution Failed",
+			"Could not execute ExifTool and write ImageDescription to Exif. Ensure the bundled ExifTool is present and accessible.",
+			str(e)
+		)
+		return False

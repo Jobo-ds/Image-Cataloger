@@ -1,32 +1,67 @@
 # metadata/xmp_handler.py 📝
-from PIL import Image
-import piexif
-import io
+import asyncio
+import os
+import sys
+from utils.state import state  # Import your error dialog system
 
-def get_xmp_description(image_path):
-	"""Extract XMP metadata from an image."""
+async def get_xmp_description(image_path):
+	"""Extract XMP description asynchronously using the bundled ExifTool."""
+
 	try:
-		with Image.open(image_path) as img:
-			xmp_data = img.info.get("xmp", b"").decode("utf-8", errors="ignore")
-			return xmp_data
+		process = await asyncio.create_subprocess_exec(
+			state.exiftool_path, "-XMP-dc:Description", "-b", image_path,
+			stdout=asyncio.subprocess.PIPE,
+			stderr=asyncio.subprocess.PIPE
+		)
+		
+		stdout, stderr = await process.communicate()
+		
+		if process.returncode != 0:
+			error_message = stderr.decode().strip()
+			state.error_dialog.show(
+				"Could not read XMP data.",
+				"An error occurred while reading the XMP metadata. Please check if the file is valid.",
+				error_message
+			)
+			return None
+
+		return stdout.decode().strip()
+
 	except Exception as e:
-		print(f"XMP Read Error: {e}")
+		state.error_dialog.show(
+			"ExifTool Execution Failed (XMP)",
+			"Could not execute ExifTool to read XMP description. Ensure the bundled ExifTool is present and accessible.",
+			str(e)
+		)
 		return None
 
-def set_xmp_description(image_path, description):
-	"""Write XMP metadata to an image."""
+async def set_xmp_description(image_path, new_description):
+	"""Modify XMP description asynchronously using the bundled ExifTool."""
+
 	try:
-		with Image.open(image_path) as img:
-			# Ensure XMP data is properly encoded
-			xmp_bytes = f'<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF><rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:description>{description}</dc:description></rdf:Description></rdf:RDF></x:xmpmeta>'.encode("utf-8")
+		process = await asyncio.create_subprocess_exec(
+			state.exiftool_path, f"-XMP-dc:Description={new_description}", "-overwrite_original", image_path,
+			stdout=asyncio.subprocess.PIPE,
+			stderr=asyncio.subprocess.PIPE
+		)
+		
+		stdout, stderr = await process.communicate()
 
-			# Save the image with updated XMP metadata
-			new_img = io.BytesIO()
-			img.save(new_img, format=img.format, xmp=xmp_bytes)
+		if process.returncode != 0:
+			error_message = stderr.decode().strip()
+			state.error_dialog.show(
+				"Could not write XMP data.",
+				"An error occurred while modifying the XMP metadata. Please check if the file is valid and not locked.",
+				error_message
+			)
+			return False
 
-			# Overwrite the original image with the updated one
-			with open(image_path, "wb") as f:
-				f.write(new_img.getvalue())
+		return True
 
 	except Exception as e:
-		print(f"XMP Write Error: {e}")
+		state.error_dialog.show(
+			"ExifTool Execution Failed (XMP)",
+			"Could not execute ExifTool to set XMP description. Ensure the bundled ExifTool is present and accessible.",
+			str(e)
+		)
+		return False

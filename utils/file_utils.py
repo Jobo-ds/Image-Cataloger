@@ -1,5 +1,5 @@
 # utils/file_utils.py
-import threading
+import asyncio
 import base64
 import concurrent.futures
 from nicegui import ui
@@ -12,6 +12,8 @@ from utils.string_utils import convert_to_ascii
 from utils.state import state
 from io import BytesIO
 import config
+import tkinter as tk
+from tkinter import filedialog
 
 def check_tasks_done(future_image, future_metadata):
     """Checks if both tasks are done, then hides spinners."""
@@ -22,30 +24,34 @@ def check_tasks_done(future_image, future_metadata):
 
 
 
-def open_image():
-    """
-    Opens a file dialog and loads the selected image.
-    """
-    import tkinter as tk
-    from tkinter import filedialog
+async def open_image():
+	"""
+	Asynchronously opens a file dialog and loads the selected image.
+	"""
+	loop = asyncio.get_event_loop()
 
-    root = tk.Tk()
-    root.withdraw()
-    root.attributes('-topmost', True)
+	# Run the file dialog in a separate thread (since Tkinter is blocking)
+	def select_file():
+		root = tk.Tk()
+		root.withdraw()
+		root.attributes('-topmost', True)
+		file_path = filedialog.askopenfilename(
+			title="Select an Image",
+			filetypes=[("Image Files", "*.jpg;*.jpeg;*.png;*.tiff;*.tif")]
+		)
+		root.destroy()
+		return file_path
 
-    file_path = filedialog.askopenfilename(
-        title="Select an Image",
-        filetypes=[("Image Files", "*.jpg;*.jpeg;*.png;*.tiff;*.tif")]
-    )
+	file_path = await loop.run_in_executor(None, select_file)
 
-    root.destroy()
-    if not file_path:
-        print("No file selected.")
-        return
+	if not file_path:
+		print("No file selected.")
+		return
 
-    load_image(Path(file_path))
+	await load_image(Path(file_path))
 
-def load_image(image_path):
+
+async def load_image(image_path):
     """
     Loads an image, using the buffer if available, and extracts metadata.
     """
@@ -54,7 +60,7 @@ def load_image(image_path):
     state.editor_spinner.show()
 
     image_path = Path(image_path)
-    if not image_path.exists():
+    if not await asyncio.to_thread(image_path.exists):
         state.error_dialog.show("File does not exist.", "Confirm the image file exists, and try again.")
         state.image_spinner.hide()
         state.editor_spinner.hide()
@@ -67,17 +73,15 @@ def load_image(image_path):
         display_image(state.image_buffer[image_path])
         ui.timer(0.5, lambda: (state.image_spinner.hide(), state.editor_spinner.hide()), once=True)
     else:
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            future_image = executor.submit(process_image_for_display, image_path)
-            future_metadata = executor.submit(extract_metadata, image_path)
-            ui.timer(0.1, lambda: check_tasks_done(future_image, future_metadata), once=True)
-
-    
+        await asyncio.gather(
+            process_image_for_display(image_path),
+            extract_metadata(image_path)
+        )
 
     if config.DEVELOPMENT_MODE:
         display_memory_usage()
 
-def process_image_for_display(image_path):
+async def process_image_for_display(image_path):
     """
     Converts the image to an in-memory JPG Base64 string for NiceGUI display.
     """
@@ -102,8 +106,10 @@ def process_image_for_display(image_path):
             display_image(base64_image)
 
     except Exception as e:
-        state.error_dialog.show(f"Could not process {image_path.name} for app.", "Please try again, and confirm the image works in a different program.", f"{e}")
-        print(f"Image processing error ({image_path.name}): {e}")
+        state.error_dialog.show(
+            f"Could not process {image_path.name} for app.", 
+            "Please try again, and confirm the image works in a different program.", 
+            f"{e}")
 
 def display_image(image_data):
     """
@@ -116,23 +122,22 @@ def display_image(image_data):
             print("Warning: Image display UI not initialized yet.")
     except Exception as e:
         state.error_dialog.show(f"Could not display image.", "Please try again, and confirm the image works in a different program.", f"{e}")
-        print(f"Error displaying image: {e}")
 
-def extract_metadata(image_path):
+async def extract_metadata(image_path):
     """
     Extracts EXIF/XMP metadata and updates the UI in the background.
     """
     try:
         with Image.open(image_path) as img:
-            xmp_description = get_xmp_description(image_path)
-            exif_description = get_exif_description(image_path)
+            xmp_description = await get_xmp_description(image_path)
+            exif_description = await get_exif_description(image_path)
             ascii_exif_description = convert_to_ascii(exif_description)
 
             state.metadata_input.value = xmp_description if xmp_description else ascii_exif_description
             if state.metadata_xmp:
                 state.metadata_xmp.value = xmp_description
             else:
-                state.metadata_exif.value = "No XMP metadata found."
+                state.metadata_xmp.value = "No XMP metadata found."
             if state.metadata_exif:
                 state.metadata_exif.value = exif_description
             else:
@@ -142,7 +147,8 @@ def extract_metadata(image_path):
             ui.update(state.metadata_input)
             ui.update(state.metadata_exif)
             ui.update(state.metadata_xmp)
-            state.editor_spinner.hide()
     except Exception as e:
-        state.error_dialog.show(f"Unable to extract metadata", "The app was not able to extract the EXIF or XMP data from this image.", f"{e}")
-        print(f"Metadata extraction error: {e}")
+        state.error_dialog.show(
+            f"Unable to extract metadata", 
+            "The app was not able to extract the EXIF or XMP data from this image.", 
+            f"{e}")
