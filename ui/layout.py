@@ -18,7 +18,7 @@ def setup_ui():
         with ui.column().classes('flex-1 w-full min-h-0 items-center justify-center border border-blue-500') as image_container:
             with ui.row().classes('h-full w-full items-center justify-center'):
                 state.image_spinner = PremadeSpinner(image_container, "xl", "absolute top-1/4 left-1/2")
-                state.image_display = ui.image().classes("w-full max-h-full opacity-100").props('fit=scale-down')
+                state.image_display = ui.image().classes("w-full max-h-full opacity-100").props('fit=scale-down loading="eager" fetchpriority="high" no-spinner no-native-menu no-transition')
 
         # Editor (fixed height)
         with ui.row().classes('w-full justify-center shrink-0 border border-red-500'):

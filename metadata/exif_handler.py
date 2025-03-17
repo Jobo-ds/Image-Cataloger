@@ -12,7 +12,6 @@ def get_exif_description(image_path):
 			# Ensure the image has EXIF data
 			exif_data = img.info.get("exif", b"")
 			if not exif_data:
-				print("Warning: No EXIF data found in this image.")
 				return ""
 
 			# Load EXIF data using piexif
@@ -20,7 +19,6 @@ def get_exif_description(image_path):
 			description_bytes = exif_dict["0th"].get(piexif.ImageIFD.ImageDescription, b"")
 
 			if not description_bytes:
-				print("Warning: No EXIF description found.")
 				return ""
 
 			# Decode EXIF description
@@ -38,7 +36,6 @@ def set_exif_description(image_path, description):
 	try:
 		with Image.open(image_path) as img:
 			if img.format not in ["JPEG", "TIFF"]:  # EXIF is not supported in PNG
-				print("EXIF Write Error: EXIF metadata is only supported in JPEG and TIFF formats.")
 				return
 
 			# Try loading EXIF data correctly

@@ -50,10 +50,6 @@ def load_image(image_path):
     Loads an image, using the buffer if available, and extracts metadata.
     """
 
-    if state.image_display:
-        state.image_display.classes(add="opacity-50")
-    ui.update(state.image_display)
-    
     state.image_spinner.show()
     state.editor_spinner.show()
 
@@ -68,11 +64,9 @@ def load_image(image_path):
 
     # Process iamge or use buffer
     if image_path in state.image_buffer:
-        print(f"Using cached version of {image_path.name}")
         display_image(state.image_buffer[image_path])
         ui.timer(0.5, lambda: (state.image_spinner.hide(), state.editor_spinner.hide()), once=True)
     else:
-        print(f"Processing {image_path.name}...")
         with concurrent.futures.ThreadPoolExecutor() as executor:
             future_image = executor.submit(process_image_for_display, image_path)
             future_metadata = executor.submit(extract_metadata, image_path)
@@ -118,7 +112,6 @@ def display_image(image_data):
     try:
         if state.image_display:
             state.image_display.set_source(image_data)
-            ui.timer(0.2, lambda: state.image_display.classes(remove="opacity-50"), once=True)
         else:
             print("Warning: Image display UI not initialized yet.")
     except Exception as e:
