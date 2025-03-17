@@ -1,6 +1,7 @@
 # utils/file_utils.py
 import threading
 import base64
+import concurrent.futures
 from nicegui import ui
 from pathlib import Path
 from PIL import Image
@@ -11,6 +12,15 @@ from utils.string_utils import convert_to_ascii
 from utils.state import state
 from io import BytesIO
 import config
+
+def check_tasks_done(future_image, future_metadata):
+    """Checks if both tasks are done, then hides spinners."""
+    if future_image.done() and future_metadata.done():
+        ui.timer(0.5, lambda: (state.image_spinner.hide(), state.editor_spinner.hide()), once=True)
+    else:
+        ui.timer(0.1, lambda: check_tasks_done(future_image, future_metadata), once=True)
+
+
 
 def open_image():
     """
@@ -39,12 +49,17 @@ def load_image(image_path):
     """
     Loads an image, using the buffer if available, and extracts metadata.
     """
+
+    if state.image_display:
+        state.image_display.classes(add="opacity-50")
+    ui.update(state.image_display)
+    
     state.image_spinner.show()
     state.editor_spinner.show()
-    state.error_dialog.show("An error has occured:", "Please try again.", "Exception message")
+
     image_path = Path(image_path)
     if not image_path.exists():
-        print("Error: File does not exist.")
+        state.error_dialog.show("File does not exist.", "Confirm the image file exists, and try again.")
         state.image_spinner.hide()
         state.editor_spinner.hide()
         return
@@ -55,11 +70,15 @@ def load_image(image_path):
     if image_path in state.image_buffer:
         print(f"Using cached version of {image_path.name}")
         display_image(state.image_buffer[image_path])
+        ui.timer(0.5, lambda: (state.image_spinner.hide(), state.editor_spinner.hide()), once=True)
     else:
         print(f"Processing {image_path.name}...")
-        threading.Thread(target=process_image_for_display, args=(image_path,), daemon=True).start()
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future_image = executor.submit(process_image_for_display, image_path)
+            future_metadata = executor.submit(extract_metadata, image_path)
+            ui.timer(0.1, lambda: check_tasks_done(future_image, future_metadata), once=True)
 
-    threading.Thread(target=extract_metadata, args=(image_path,), daemon=True).start()
+    
 
     if config.DEVELOPMENT_MODE:
         display_memory_usage()
@@ -89,6 +108,7 @@ def process_image_for_display(image_path):
             display_image(base64_image)
 
     except Exception as e:
+        state.error_dialog.show(f"Could not process {image_path.name} for app.", "Please try again, and confirm the image works in a different program.", f"{e}")
         print(f"Image processing error ({image_path.name}): {e}")
 
 def display_image(image_data):
@@ -98,12 +118,12 @@ def display_image(image_data):
     try:
         if state.image_display:
             state.image_display.set_source(image_data)
+            ui.timer(0.2, lambda: state.image_display.classes(remove="opacity-50"), once=True)
         else:
             print("Warning: Image display UI not initialized yet.")
     except Exception as e:
+        state.error_dialog.show(f"Could not display image.", "Please try again, and confirm the image works in a different program.", f"{e}")
         print(f"Error displaying image: {e}")
-    finally:
-        state.image_spinner.hide()
 
 def extract_metadata(image_path):
     """
@@ -131,4 +151,5 @@ def extract_metadata(image_path):
             ui.update(state.metadata_xmp)
             state.editor_spinner.hide()
     except Exception as e:
+        state.error_dialog.show(f"Unable to extract metadata", "The app was not able to extract the EXIF or XMP data from this image.", f"{e}")
         print(f"Metadata extraction error: {e}")

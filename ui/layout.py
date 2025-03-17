@@ -1,12 +1,12 @@
 from nicegui import ui, app
 from ui.editor import create_metadata_section
 from ui.navigation import create_navigation_controls
-from ui.spinners import spinner
+from ui.spinners import PremadeSpinner
 from utils.file_utils import open_image
 from utils.state import state
 
 def setup_ui():
-    ui.query('.nicegui-content').classes('p-0 gap-0') # Remove ssystme gaps from nicegui
+    ui.query('.nicegui-content').classes('p-0 gap-0 bg-slate-700') # Remove ssystme gaps from nicegui
     # Load custom styles
     app.add_static_files('/static', 'static')
     ui.add_head_html('<link rel="stylesheet" href="static/styles.css">')
@@ -15,10 +15,10 @@ def setup_ui():
     with ui.column().classes('h-screen w-full flex flex-col'):
 
         # Image container (fills remaining space dynamically)
-        with ui.column().classes('flex-1 w-full min-h-0 items-center justify-center border border-blue-500'):
+        with ui.column().classes('flex-1 w-full min-h-0 items-center justify-center border border-blue-500') as image_container:
             with ui.row().classes('h-full w-full items-center justify-center'):
-                state.image_spinner.get()
-                state.image_display = ui.image().classes("w-full max-h-full").props('fit=scale-down')
+                state.image_spinner = PremadeSpinner(image_container, "xl", "absolute top-1/4 left-1/2")
+                state.image_display = ui.image().classes("w-full max-h-full opacity-100").props('fit=scale-down')
 
         # Editor (fixed height)
         with ui.row().classes('w-full justify-center shrink-0 border border-red-500'):

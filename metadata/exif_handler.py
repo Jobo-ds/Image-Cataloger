@@ -1,9 +1,12 @@
 # metadata/exif_handler.py 📝
 from PIL import Image
 import piexif
+from utils.state import state
 
 def get_exif_description(image_path):
-	"""Extract EXIF description from an image. Returns an empty string if missing."""
+	"""
+	Extract EXIF description from an image. Returns an empty string if missing.
+	"""
 	try:
 		with Image.open(image_path) as img:
 			# Ensure the image has EXIF data
@@ -24,11 +27,14 @@ def get_exif_description(image_path):
 			description = description_bytes.decode("utf-8", errors="ignore")
 			return description
 	except Exception as e:
+		state.error_dialog.show(f"Could not read EXIF data.", "The exif data could be corrupted.", f"{e}")
 		print(f"EXIF Read Error: {e}")
 		return ""
 
 def set_exif_description(image_path, description):
-	"""Write EXIF description to an image, properly detecting existing EXIF data."""
+	"""
+	Write EXIF description to an image, properly detecting existing EXIF data.
+	"""
 	try:
 		with Image.open(image_path) as img:
 			if img.format not in ["JPEG", "TIFF"]:  # EXIF is not supported in PNG
@@ -51,7 +57,8 @@ def set_exif_description(image_path, description):
 			# Save the image with updated EXIF data
 			img.save(image_path, exif=exif_bytes)
 
-			print("EXIF metadata updated successfully!")  # ✅ Added confirmation message
+			print("EXIF metadata updated successfully!") 
 
 	except Exception as e:
+		state.error_dialog.show(f"Could not write EXIF data.", "The app was unable to save the EXIF data to the image.", f"{e}")
 		print(f"EXIF Write Error: {e}")

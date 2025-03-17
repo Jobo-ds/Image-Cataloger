@@ -159,3 +159,4 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 /.nicegui_delete
+test_files/tiff_xxlarge_file.tif

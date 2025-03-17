@@ -1,19 +1,19 @@
 from nicegui import ui
 
-class spinner():
-	"""Create a spinner to indicate loading."""
-	def __init__(self):
-		self.spinner = ui.spinner(size="xl").classes('absolute top-1/4 left-1/2 z-10')
-		self.spinner.style('display: none;')
+class PremadeSpinner:
+	def __init__(self, containers, size="xl", classes=""):
+		self.spinners = []
+		for container in containers:
+			with container:
+				spinner = ui.spinner(size=size).classes(f'{classes} hidden z-50')
+				self.spinners.append(spinner)
 
 	def show(self):
 		"""Show the spinner."""
-		self.spinner.style('display: block;')
+		for spinner in self.spinners:
+			spinner.classes(remove='hidden')
 
 	def hide(self):
 		"""Hide the spinner."""
-		self.spinner.style('display: none;')
-
-	def get(self):
-		"""Return the spinner."""
-		return self.spinner
+		for spinner in self.spinners:
+			spinner.classes(add='hidden')

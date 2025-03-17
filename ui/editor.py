@@ -3,44 +3,13 @@ from utils.state import state
 from utils.string_utils import convert_to_ascii
 from metadata.xmp_handler import set_xmp_description
 from metadata.exif_handler import set_exif_description
+from ui.spinners import PremadeSpinner
 
 
 def create_metadata_section():
-	"""Create metadata input, EXIF fallback display, and reset functionality."""
-
-	with ui.tabs().classes('w-full max-w-2xl').props('transition-prev="fade" transition-next="fade"') as tabs:
-		editor = ui.tab('Edit Description')
-		metadata_xmp = ui.tab('View XMP')
-		metadata_exif = ui.tab('View EXIF')
-		reset_button = ui.button("Undo",icon="sym_o_undo", on_click=lambda: reset_metadata(metadata_input)).classes(
-				"p-2 absolute right-0")
-	
-	with ui.tab_panels(tabs, value=editor).classes('w-full bg-transparent h-[130px]').props('transition-prev="fade" transition-next="fade"'):
-		with ui.tab_panel(editor):
-			state.editor_spinner.get()
-			dev_placeholder = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure awd a."
-			prod_placeholder = "No image description."
-			with ui.row().classes("w-full justify-center min-height-screen"):
-				validations =  {'Exif limit: 255 characters.': lambda value: len(value) < 255}
-				metadata_input = ui.textarea(placeholder=prod_placeholder, validation=validations).classes("w-full max-w-2xl").props("filled square autogrow v-model='text'")
-
-		with ui.tab_panel(metadata_xmp):
-			with ui.row().classes("w-full justify-center"):
-				state.editor_spinner.get()
-				metadata_xmp = ui.textarea(
-					placeholder=prod_placeholder,
-					value=dev_placeholder
-				).classes("w-full max-w-2xl no-scrollbar").props("filled readonly disable square autogrow rows=1")
-
-		with ui.tab_panel(metadata_exif):
-			with ui.row().classes("w-full justify-center"):
-				state.editor_spinner.get()
-				metadata_exif = ui.textarea(
-					placeholder=prod_placeholder,
-					value=dev_placeholder
-				).classes("w-full max-w-2xl no-scrollbar").props("filled readonly disable square autogrow rows=1")
-
-	
+	"""
+	Create metadata input, EXIF display, and reset functionality.
+	"""
 	def set_metadata_field(field, value):
 		"""Set the metadata field to the given value."""
 		field.value = value
@@ -67,6 +36,38 @@ def create_metadata_section():
 			print("Reset metadata saved successfully!")
 		else:
 			print("Metadata saved successfully!")
+
+
+	with ui.tabs().classes('w-full max-w-2xl').props('transition-prev="fade" transition-next="fade"') as tabs:
+		editor = ui.tab('Edit Description')
+		metadata_xmp = ui.tab('View XMP')
+		metadata_exif = ui.tab('View EXIF')
+		reset_button = ui.button("Undo",icon="sym_o_undo", on_click=lambda: reset_metadata(metadata_input)).classes(
+				"p-2 absolute right-0")
+	
+	with ui.tab_panels(tabs, value=editor).classes('w-full bg-transparent h-[130px]').props('transition-prev="fade" transition-next="fade"'):
+		with ui.tab_panel(editor):
+			dev_placeholder = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure awd a."
+			prod_placeholder = "No image description."
+			with ui.row().classes("w-full justify-center min-height-screen"):
+				validations =  {'Exif limit: 255 characters.': lambda value: len(value) < 255}
+				metadata_input = ui.textarea(placeholder=prod_placeholder, validation=validations).classes("w-full max-w-2xl").props("filled square autogrow v-model='text'")
+
+		with ui.tab_panel(metadata_xmp):
+			with ui.row().classes("w-full justify-center"):
+				metadata_xmp = ui.textarea(
+					placeholder=prod_placeholder,
+					value=dev_placeholder
+				).classes("w-full max-w-2xl no-scrollbar").props("filled readonly disable square autogrow rows=1")
+
+		with ui.tab_panel(metadata_exif):
+			with ui.row().classes("w-full justify-center"):
+				metadata_exif = ui.textarea(
+					placeholder=prod_placeholder,
+					value=dev_placeholder
+				).classes("w-full max-w-2xl no-scrollbar").props("filled readonly disable square autogrow rows=1")
+
+	state.editor_spinner = PremadeSpinner(containers=[metadata_input, metadata_xmp, metadata_exif], size="xl", classes="relative")
 
 	metadata_input.on('blur', save_metadata)  # Autosave on blur
 

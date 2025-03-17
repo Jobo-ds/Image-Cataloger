@@ -1,3 +1,5 @@
+import threading
+from ui.dialogs import ErrorDialog
 from collections import OrderedDict
 
 # utils/state.py
@@ -20,7 +22,7 @@ class AppState:
         self.prev_button = None
         self.next_button = None
         # App data
-        self.image_buffer = None
+        self.image_buffer = OrderedDict()
         self.current_image = None
         self.original_metadata = None
         self.image_counter = None
@@ -28,7 +30,7 @@ class AppState:
         self.total_images_folder = None
         self.unsaved_changes = False
         # Dialogs
-        self.error_dialog = None
+        self.error_dialog = ErrorDialog()
 
 # Create a single instance of AppState to be shared across the app
 state = AppState()
