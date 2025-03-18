@@ -160,3 +160,5 @@ cython_debug/
 #.idea/
 /.nicegui_delete
 test_files/tiff_xxlarge_file.tif
+test_files/original/folder_with_tags/tiff_xxlarge_file.tif
+test_files/folder_with_tags/tiff_xxlarge_file.tif

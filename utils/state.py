@@ -25,6 +25,7 @@ class AppState:
 		self.metadata_input = None
 		self.metadata_exif = None
 		self.metadata_xmp = None
+		self.metadata_xmp_langs = None
 		# Buttons
 		self.undo_button = None
 		self.prev_button = None

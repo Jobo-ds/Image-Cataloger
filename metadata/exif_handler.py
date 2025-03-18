@@ -3,44 +3,34 @@ import asyncio
 import os
 import sys
 from utils.state import state
+import exiftool
 
 async def get_exif_description(image_path):
 	"""
 	Extract EXIF description asynchronously using ExifTool.
 	"""
 	try:
-		exiftool_path = os.path.abspath(state.exiftool_path)  # Ensure absolute path
-		print(exiftool_path)
-
 		# Ensure the file actually exists before calling subprocess
-		if not os.path.isfile(exiftool_path):
-			raise FileNotFoundError(f"ExifTool not found at {exiftool_path}")
-		print(image_path)
+		if not os.path.isfile(state.exiftool_path) or not os.path.isfile(image_path):
+			raise FileNotFoundError(f"A required file was not found at either {state.exiftool_path} or {image_path}.")
 
-		process = await asyncio.create_subprocess_exec(
-			exiftool_path, "-EXIF:ImageDescription", "-b", image_path,
-			stdin=asyncio.subprocess.DEVNULL,
-			stdout=asyncio.subprocess.PIPE,
-			stderr=asyncio.subprocess.PIPE
-		)
-		stdout, stderr = await process.communicate()
-		print("STDOUT:", stdout.decode().strip())
-		print("STDERR:", stderr.decode().strip())
-
-		if process.returncode != 0:
-			print(f"ExifTool failed with code {process.returncode}")
-			return "No data in ImageDescription tag."
-
-		return stdout.decode().strip() or "No data in ImageDescription tag."
+		with exiftool.ExifToolHelper(executable=str(state.exiftool_path)) as et:
+			metadata = et.get_tags(image_path, ["EXIF:ImageDescription"])
+			return metadata[0]["EXIF:ImageDescription"]
 
 	except Exception as e:
-		print(f"Error: {e}")  # Print error for debugging
 		state.error_dialog.show(
-			"ExifTool Execution Failed (Exif)",
-			"Could not execute ExifTool and get ImageDescription from Exif. Ensure the bundled ExifTool is present and accessible.",
+			"ExifTool Execution Failed",
+			"An error occured when attemping to get the EXIF ImageDescription through ExifTool.",
 			str(e)
 		)
 		return ""
+	except FileNotFoundError as e:
+		state.error_dialog.show(
+			"Missing required file.",
+			"An error occured when attemping to get the EXIF ImageDescription through ExifTool. Either ExifTool or the image file is missing.",
+			str(e)
+		)
 
 
 async def set_exif_description(image_path, new_description):
@@ -49,28 +39,30 @@ async def set_exif_description(image_path, new_description):
 	"""
 
 	try:
-		process = await asyncio.create_subprocess_exec(
-			state.exiftool_path, f"-EXIF:ImageDescription={new_description}", "-overwrite_original", str(image_path),
-			stdout=asyncio.subprocess.PIPE,
-			stderr=asyncio.subprocess.PIPE
-		)
-		stdout, stderr = await process.communicate()
+		# Ensure the file actually exists before calling subprocess
+		if not os.path.isfile(state.exiftool_path) or not os.path.isfile(image_path):
+			raise FileNotFoundError(f"A required file was not found at either {state.exiftool_path} or {image_path}.")
 
-		if process.returncode != 0:
-			error_message = stderr.decode().strip()
-			state.error_dialog.show(
-				"Could not write EXIF data.",
-				"An error occurred while modifying the EXIF metadata. Please check if the file is valid and not locked.",
-				error_message
-			)
-			return False
+		metadata_json = {
+			"EXIF:ImageDescription": new_description
+		}
 
-		return True
+		with exiftool.ExifToolHelper(executable=str(state.exiftool_path)) as et:
+			et.set_tags(
+				image_path, 
+				tags=metadata_json,
+				params="")
 
 	except Exception as e:
 		state.error_dialog.show(
 			"ExifTool Execution Failed",
-			"Could not execute ExifTool and write ImageDescription to Exif. Ensure the bundled ExifTool is present and accessible.",
+			"An error occured when attemping to set the EXIF ImageDescription through ExifTool.",
 			str(e)
 		)
-		return False
+		return ""
+	except FileNotFoundError as e:
+		state.error_dialog.show(
+			"Missing required file.",
+			"An error occured when attemping to set the EXIF ImageDescription through ExifTool. Either ExifTool or the image file is missing.",
+			str(e)
+		)
