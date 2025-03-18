@@ -36,7 +36,7 @@ async def get_xmp_description(image_path):
 		)
 
 
-async def set_xmp_description(image_path, new_description):
+async def set_xmp_description(image_path, new_description:str):
 	"""
 	Modify XMP description asynchronously using ExifTool.
 	"""
@@ -54,7 +54,8 @@ async def set_xmp_description(image_path, new_description):
 			et.set_tags(
 				image_path, 
 				tags=metadata_json,
-				params="")
+				params="-overwrite_original")
+		return True
 
 	except Exception as e:
 		state.error_dialog.show(

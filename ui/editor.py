@@ -6,81 +6,18 @@ from metadata.xmp_handler import set_xmp_description, get_xmp_description
 from metadata.exif_handler import set_exif_description, get_exif_description
 from ui.spinners import PremadeSpinner
 
-metadata_save_queue = asyncio.Queue()
-
-async def process_metadata_queue():
-	"""
-	Background task to process metadata save requests.
-	"""
-	while True:
-		undo = await metadata_save_queue.get()
-		
-		if not state.current_image:
-			metadata_save_queue.task_done()
-			continue
-		
-		state.metadata_input.add_props("disable readonly")
-		state.editor_spinner.show()
-		await ui.update(state.metadata_input)
-		await ui.update(state.editor_spinner)
-
-		try:
-			new_description = state.metadata_input.value
-			ascii_description = convert_to_ascii(new_description)
-
-			if undo and new_description == state.original_metadata:
-				ui.notify("Nothing to undo.", type="warning", close_button="X", position="top-right")
-			
-			elif undo:
-				state.metadata_input.value = state.original_metadata
-				await ui.update(state.metadata_input)
-				xmp_saved = set_xmp_description(state.current_image, state.original_metadata)
-				exif_saved = set_exif_description(state.current_image, convert_to_ascii(state.original_metadata))
-				warnings = []
-				if not xmp_saved:
-					warnings.append("XMP metadata")
-				if not exif_saved:
-					warnings.append("EXIF metadata")
-
-				if warnings:
-					ui.notify(f"{', '.join(warnings)} could not be saved.", type="warning", close_button="X", position="top-right")
-				else:
-					ui.notify("Metadata saved successfully!", type="positive", close_button="X", position="top-right")
-
-				await(update_metadata_display())
-			
-			else:
-				xmp_saved = set_xmp_description(state.current_image, new_description)
-				exif_saved = set_exif_description(state.current_image, ascii_description)
-				warnings = []
-				if not xmp_saved:
-					warnings.append("XMP metadata")
-				if not exif_saved:
-					warnings.append("EXIF metadata")
-
-				if warnings:
-					ui.notify(f"{', '.join(warnings)} could not be saved.", type="warning", close_button="X", position="top-right")
-				else:
-					ui.notify("Metadata saved successfully!", type="positive", close_button="X", position="top-right")
-				await(update_metadata_display())
-		
-		except Exception as e:
-			state.error_dialog.show("Metadata could not be saved.", "An error occurred while saving the metadata, try again or reload the image.", f"{e}")
-			await ui.update(state.error_dialog)
-		
-		finally:
-			state.metadata_input.remove_props("disable readonly")
-			state.editor_spinner.hide()
-			await ui.update(state.metadata_input)
-			await ui.update(state.editor_spinner)
-
-			metadata_save_queue.task_done()
 
 async def save_metadata(undo=False):
-	"""
-	Add a metadata save request to the queue.
-	"""
-	await metadata_save_queue.put_nowait(undo)
+	print(f"DEBUG: save_metadata called. save_queue = {state.save_queue}")  # Debugging line
+	try:
+		if state.save_queue is None:
+			print("ERROR: save_queue is None!")
+			return  # Prevents queue operations if it's not initialized
+		await state.save_queue.put(undo)  # Ensures we are putting a valid item
+	except Exception as e:
+		print(f"ERROR: Exception in save_metadata: {e}")
+
+
 
 async def update_metadata_display():
 	"""
@@ -89,16 +26,12 @@ async def update_metadata_display():
 	if not state.current_image:
 		return  # No image loaded yet
 
-	xmp = get_xmp_description(state.current_image)
-	exif = get_exif_description(state.current_image)
+	print("Updating the metadata from file ...")
+	xmp = await get_xmp_description(state.current_image)
+	exif = await get_exif_description(state.current_image)
 	state.metadata_input.value = xmp if xmp else convert_from_ascii(exif)
 	state.metadata_xmp.value = xmp
 	state.metadata_exif.value = exif
-	
-
-	await ui.update(state.metadata_input)
-	await ui.update(state.metadata_exif)
-	await ui.update(state.metadata_xmp)
 
 def create_metadata_section():
 	"""
@@ -131,7 +64,9 @@ def create_metadata_section():
 
 	state.editor_spinner = PremadeSpinner(containers=[metadata_input, metadata_xmp, metadata_exif], size="xl", classes="relative")
 
-	metadata_input.on('blur', save_metadata)  # Autosave on blur
+	metadata_input.on('blur', lambda _: asyncio.create_task(asyncio.sleep(0.1)).add_done_callback(
+		lambda _: asyncio.create_task(save_metadata())
+	))
 
 	return {
 		"input": metadata_input, 

@@ -71,7 +71,8 @@ async def load_image(image_path):
     # Process image or use buffer
     if image_path in state.image_buffer:
         display_image(state.image_buffer[image_path])
-        ui.timer(0.5, lambda: (state.image_spinner.hide(), state.editor_spinner.hide()), once=True)
+        state.image_spinner.hide()
+        state.editor_spinner.hide()        
     else:
         # Run tasks in parallel but ensure they complete
         image_task = asyncio.create_task(process_image_for_display(image_path))

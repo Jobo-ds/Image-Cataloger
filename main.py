@@ -1,16 +1,22 @@
 # main.py
 import os
 import atexit
+import asyncio
 from nicegui import ui, app
 
 
 from ui.dialogs import ErrorDialog
-
+from utils.tasks import save_metadata_queue
 from ui.layout import setup_ui
 from utils.state import state
 
 # Initialize the UI
 setup_ui()
+
+@app.on_startup
+async def start_background_tasks():
+	print("DEBUG: Starting save_metadata_queue...")
+	asyncio.create_task(save_metadata_queue())
 
 # Flag to prevent multiple shutdown calls
 shutdown_called = False
