@@ -47,7 +47,7 @@ async def set_xmp_description(image_path, new_description:str):
 			raise FileNotFoundError(f"A required file was not found at either {state.exiftool_path} or {image_path}.")
 
 		metadata_json = {
-			"EXIF:ImageDescription": new_description
+			"XMP-dc:Description": new_description
 		}
 
 		with exiftool.ExifToolHelper(executable=str(state.exiftool_path)) as et:
@@ -63,10 +63,11 @@ async def set_xmp_description(image_path, new_description:str):
 			"An error occured when attemping to set the XMP Description through ExifTool.",
 			str(e)
 		)
-		return ""
+		return False
 	except FileNotFoundError as e:
 		state.error_dialog.show(
 			"Missing required file.",
 			"An error occured when attemping to set the XMP Description through ExifTool. Either ExifTool or the image file is missing.",
 			str(e)
 		)
+		return False

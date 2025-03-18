@@ -24,7 +24,6 @@ async def get_exif_description(image_path):
 			"An error occured when attemping to get the EXIF ImageDescription through ExifTool.",
 			str(e)
 		)
-		return ""
 	except FileNotFoundError as e:
 		state.error_dialog.show(
 			"Missing required file.",

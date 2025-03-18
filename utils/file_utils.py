@@ -7,7 +7,7 @@ from pathlib import Path
 from PIL import Image
 from metadata.exif_handler import get_exif_description
 from metadata.xmp_handler import get_xmp_description
-from utils.dev_tools import display_memory_usage
+from utils.dev_tools import display_memory_usage, async_measure_execution_time
 from utils.string_utils import convert_to_ascii
 from utils.state import state
 from io import BytesIO
@@ -70,9 +70,19 @@ async def load_image(image_path):
 
     # Process image or use buffer
     if image_path in state.image_buffer:
-        display_image(state.image_buffer[image_path])
-        state.image_spinner.hide()
-        state.editor_spinner.hide()        
+        # Run tasks in parallel but ensure they complete
+        image_task = asyncio.create_task(display_image(state.image_buffer[image_path]))
+        metadata_task = asyncio.create_task(extract_metadata(image_path))
+        
+        await asyncio.gather(image_task, metadata_task)
+
+        # Ensure both tasks completed before hiding spinners
+        if image_task.done() and metadata_task.done():
+            state.image_spinner.hide()
+            state.editor_spinner.hide()
+        else:
+            # Retry hiding after a short delay if not done yet
+            ui.timer(0.5, lambda: (state.image_spinner.hide(), state.editor_spinner.hide()), once=True)             
     else:
         # Run tasks in parallel but ensure they complete
         image_task = asyncio.create_task(process_image_for_display(image_path))
@@ -113,7 +123,7 @@ async def process_image_for_display(image_path):
 
             state.image_buffer[image_path] = base64_image
 
-            display_image(base64_image)
+            await display_image(base64_image)
 
     except Exception as e:
         state.error_dialog.show(
@@ -121,7 +131,7 @@ async def process_image_for_display(image_path):
             "Please try again, and confirm the image works in a different program.", 
             f"{e}")
 
-def display_image(image_data):
+async def display_image(image_data):
     """
     Updates the UI with the processed image and hides the spinner.
     """
@@ -131,7 +141,10 @@ def display_image(image_data):
         else:
             print("Warning: Image display UI not initialized yet.")
     except Exception as e:
-        state.error_dialog.show(f"Could not display image.", "Please try again, and confirm the image works in a different program.", f"{e}")
+        state.error_dialog.show(
+            f"Could not display image.", 
+            "Please try again, and confirm the image works in a different program.", 
+            f"{e}")
 
 async def extract_metadata(image_path):
     """
