@@ -68,15 +68,24 @@ async def load_image(image_path):
 
     state.current_image = image_path
 
-    # Process iamge or use buffer
+    # Process image or use buffer
     if image_path in state.image_buffer:
         display_image(state.image_buffer[image_path])
         ui.timer(0.5, lambda: (state.image_spinner.hide(), state.editor_spinner.hide()), once=True)
     else:
-        await asyncio.gather(
-            process_image_for_display(image_path),
-            extract_metadata(image_path)
-        )
+        # Run tasks in parallel but ensure they complete
+        image_task = asyncio.create_task(process_image_for_display(image_path))
+        metadata_task = asyncio.create_task(extract_metadata(image_path))
+        
+        await asyncio.gather(image_task, metadata_task)
+
+        # Ensure both tasks completed before hiding spinners
+        if image_task.done() and metadata_task.done():
+            state.image_spinner.hide()
+            state.editor_spinner.hide()
+        else:
+            # Retry hiding after a short delay if not done yet
+            ui.timer(0.5, lambda: (state.image_spinner.hide(), state.editor_spinner.hide()), once=True)
 
     if config.DEVELOPMENT_MODE:
         display_memory_usage()
@@ -128,25 +137,53 @@ async def extract_metadata(image_path):
     Extracts EXIF/XMP metadata and updates the UI in the background.
     """
     try:
-        with Image.open(image_path) as img:
+
+        # Get file extension in lowercase
+        extension = image_path.suffix.lower()
+
+        # Define supported formats
+        supported_exif = {".jpg", ".jpeg", ".tiff", ".tif"}  # EXIF supported formats
+        supported_xmp = {".jpg", ".jpeg", ".tiff", ".tif", ".png"}  # XMP supported formats
+
+        xmp_description = False
+        exif_description = False
+
+        if extension in supported_xmp:
             xmp_description = await get_xmp_description(image_path)
+        if extension in supported_exif:
             exif_description = await get_exif_description(image_path)
-            ascii_exif_description = convert_to_ascii(exif_description)
 
-            state.metadata_input.value = xmp_description if xmp_description else ascii_exif_description
-            if state.metadata_xmp:
-                state.metadata_xmp.value = xmp_description
-            else:
-                state.metadata_xmp.value = "No XMP metadata found."
-            if state.metadata_exif:
-                state.metadata_exif.value = exif_description
-            else:
-                state.metadata_exif.value = "No EXIF metadata found."
-            state.original_metadata = state.metadata_input.value
+        # Input Field
+        if xmp_description:
+            state.metadata_input.value = xmp_description
+        elif exif_description:
+            state.metadata_input.value = convert_to_ascii(exif_description)
+        else:
+            state.metadata_input.value = ""
 
-            ui.update(state.metadata_input)
-            ui.update(state.metadata_exif)
-            ui.update(state.metadata_xmp)
+        # XMP Field
+        if xmp_description:
+            state.metadata_xmp.value = xmp_description
+            state.metadata_xmp.classes(remove="text-italic")
+        else:
+            state.metadata_xmp.value = "No XMP metadata found."
+            state.metadata_xmp.classes(add="text-italic")
+        
+        # EXIF Field
+        if exif_description:
+            state.metadata_exif.value = exif_description
+            state.metadata_exif.classes(remove="text-italic")
+        else:
+            state.metadata_exif.value = "No EXIF metadata found."
+            state.metadata_exif.classes(add="text-italic")
+
+        state.original_metadata = state.metadata_input.value
+
+        # Update UI
+        ui.update(state.metadata_input)
+        ui.update(state.metadata_exif)
+        ui.update(state.metadata_xmp)
+
     except Exception as e:
         state.error_dialog.show(
             f"Unable to extract metadata", 

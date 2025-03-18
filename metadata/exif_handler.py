@@ -16,7 +16,7 @@ async def get_exif_description(image_path):
 
 		with exiftool.ExifToolHelper(executable=str(state.exiftool_path)) as et:
 			metadata = et.get_tags(image_path, ["EXIF:ImageDescription"])
-			return metadata[0]["EXIF:ImageDescription"]
+			return metadata[0].get("EXIF:ImageDescription", False)
 
 	except Exception as e:
 		state.error_dialog.show(

@@ -19,7 +19,7 @@ async def get_xmp_description(image_path):
 				image_path,
 				["XMP-dc:Description"])
 			# TODO: Consider getting all languages and implement language selection
-			return metadata[0]["XMP:Description"]
+			return metadata[0].get("XMP:Description", False)
 
 	except Exception as e:
 		state.error_dialog.show(
