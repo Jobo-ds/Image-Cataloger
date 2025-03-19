@@ -14,48 +14,61 @@ from io import BytesIO
 import config
 import tkinter as tk
 from tkinter import filedialog
+from turbojpeg import TurboJPEG, TJPF_RGB
+
+jpeg = TurboJPEG(state.turbojpeg_path)
 
 async def open_image():
 	"""
 	Asynchronously opens a file dialog and loads the selected image.
 	"""
-	loop = asyncio.get_event_loop()
+	async with state.nav_lock:
+		loop = asyncio.get_event_loop()
 
-	# Run the file dialog in a separate thread (since Tkinter is blocking)
-	def select_file():
-		root = tk.Tk()
-		root.withdraw()
-		root.attributes('-topmost', True)
-		file_path = filedialog.askopenfilename(
-			title="Select an Image",
-			filetypes=[("Image Files", "*.jpg;*.jpeg;*.png;*.tiff;*.tif")]
-		)
-		root.destroy()
-		return file_path
-
-	file_path = await loop.run_in_executor(None, select_file)
-
-	if not file_path:
-		print("No file selected.")
-		return
-
-
-	# Cancel previous image loading task if it's still running
-	if state.latest_image_task:
-		state.latest_image_task.cancel()
-		try:
-			await state.latest_image_task  # Wait for it to cancel properly
-		except asyncio.CancelledError:
-			print(f"Cancelled previous image loading task.")
-		except Exception as e:
-			state.error_dialog.show(
-				"Error cancelling previous image",
-				"Something went wrong when stopping the previous image load. Please try again.",
-				f"{e}"
+		# Run the file dialog in a separate thread (since Tkinter is blocking)
+		def select_file():
+			root = tk.Tk()
+			root.withdraw()
+			root.attributes('-topmost', True)
+			file_path = filedialog.askopenfilename(
+				title="Select an Image",
+				filetypes=[("Image Files", "*.jpg;*.jpeg;*.png;*.tiff;*.tif")]
 			)
+			root.destroy()
+			return file_path
 
-	# Start loading new image
-	state.latest_image_task = asyncio.create_task(load_image(Path(file_path)))
+		file_path = await loop.run_in_executor(None, select_file)
+
+		if not file_path:
+			print("No file selected.")
+			return
+
+
+		# Cancel previous image loading task if it's still running
+		if state.latest_image_task:
+			state.latest_image_task.cancel()
+			try:
+				await state.latest_image_task  # Wait for it to cancel properly
+			except asyncio.CancelledError:
+				pass
+			except Exception as e:
+				state.error_dialog.show(
+					"Error cancelling previous image",
+					"Something went wrong when stopping the previous image load. Please try again.",
+					f"{e}"
+				)
+
+		# Prepare indexing of images
+		folder = Path(file_path).parent		
+		state.nav_folder = folder
+		state.nav_img_list = sorted(folder.glob("*.jpg")) + sorted(folder.glob("*.jpeg")) + sorted(folder.glob("*.png")) + sorted(folder.glob("*.tiff")) + sorted(folder.glob("*.tif"))
+		print(state.nav_img_list)
+		state.nav_img_index = state.nav_img_list.index(Path(file_path))
+		state.nav_img_total = len(state.nav_img_list)
+		state.nav_txt = f"{state.nav_img_index + 1} / {state.nav_img_total}"
+		state.nav_counter.refresh()
+		# Start loading new image
+		state.latest_image_task = asyncio.create_task(load_image(Path(file_path)))
 
 
 async def load_image(image_path):
@@ -100,36 +113,51 @@ async def load_image(image_path):
 			"Please try again, and confirm the image works in a different program.", 
 			f"{e}")
 	finally:
+		state.nav_counter.refresh()
 		state.image_spinner.hide()
 		state.editor_spinner.hide()
 
 async def cache_image(image_path):
 	"""
-	Converts the image to an in-memory JPG Base64 string for NiceGUI display.
+	Quickly converts the image to a compressed in-memory JPG Base64 string for NiceGUI.
 	"""
 	try:
-		with Image.open(image_path) as img:
-			if img.mode != "RGB":
-				img = img.convert("RGB")
-			img_io = BytesIO()
-			img.save(img_io, format="JPEG", quality=50)  # Compress for low memory
-			img_io.seek(0)
+		max_width = 1920
+		max_height = 1080
+		
+		with open(image_path, 'rb') as file:
+			jpeg_bytes = file.read()
 
-			# Convert to Base64 for nicegui
-			base64_str = base64.b64encode(img_io.getvalue()).decode("utf-8")
-			base64_image = f"data:image/jpeg;base64,{base64_str}"
+		# Read header quickly to determine image dimensions
+		header = jpeg.decode_header(jpeg_bytes)
+		width, height = header['width'], header['height']
 
-			# Store in the buffer (Remove oldest if full)
-			if len(state.image_cache) >= config.IMAGE_CACHE_SIZE:
-				state.image_cache.popitem(last=False)  # Remove the oldest entry
+		# Decide scaling factor (fast decode at lower res if large)
+		scaling_factor = (1, 1)
+		if max(width, height) > 2000:  # adjust as needed
+			scaling_factor = (1, 4)  # reduce resolution quickly to 25%
+		elif max(width, height) > max_width or max(height, width) > max_height:
+			scaling_factor = (1, 2)  # 50% size
 
-			# Cache the image in buffer
-			state.image_cache[image_path] = base64_image
+		# Decode with chosen scaling factor
+		img_array = jpeg.decode(jpeg_bytes, pixel_format=TJPF_RGB, scaling_factor=scaling_factor)
+
+		# Re-compress image at lower quality for NiceGUI
+		compressed_jpeg = jpeg.encode(img_array, quality=50)
+
+		# Base64 encode
+		base64_str = base64.b64encode(compressed_jpeg).decode("utf-8")
+		base64_image = f"data:image/jpeg;base64,{base64_str}"
+
+		# Maintain cache
+		if len(state.image_cache) >= config.IMAGE_CACHE_SIZE:
+			state.image_cache.popitem(last=False)
+		state.image_cache[image_path] = base64_image
 
 	except Exception as e:
 		state.error_dialog.show(
-			f"Could not process {image_path.name} for app.", 
-			"Please try again, and confirm the image works in a different program.", 
+			f"Could not process {(image_path.name)} for app.",
+			"Please try again, and confirm the image works in a different program.",
 			f"{e}")
 
 async def display_image(cached_image):

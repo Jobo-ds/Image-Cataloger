@@ -1,10 +1,17 @@
 import asyncio
 from nicegui import ui, app
 from ui.editor import create_metadata_section
-from ui.navigation import create_navigation_controls
+from utils.file_navigation import navigate_image
 from ui.spinners import PremadeSpinner
 from utils.file_utils import open_image
 from utils.state import state
+
+@ui.refreshable
+def index_counter():
+	"""Creates a label that updates dynamically when refreshed."""
+	return ui.label(state.nav_txt).classes("mx-4 text-gray-700 text-lg")
+
+state.nav_counter = index_counter
 
 def setup_ui():
     ui.query('.nicegui-content').classes('p-0 gap-0 bg-neutral-800') # Remove ssystme gaps from nicegui
@@ -30,25 +37,20 @@ def setup_ui():
             state.undo_button = elements["undo"]
 
         # Navigation bar (fixed height, sticks to bottom)
-        with ui.row().classes('w-full p-4 justify-between items-center border border-yellow-500'):
+        with ui.row().classes('relative w-full p-4 justify-between items-center border border-yellow-500'):
             
             # Left Section: Open Image button (stays left-aligned)
-            with ui.column():
-                ui.button("Open Image", icon="sym_o_folder_open", on_click=lambda: asyncio.create_task(open_image()))
+            with ui.column().classes("flex justify-start"):
+                with ui.row():
+                    ui.button("Open Image", icon="sym_o_folder_open", on_click=lambda: asyncio.create_task(open_image()))
+                    ui.button("Reload folder", icon="sym_o_refresh")
 
             # Center Section: Navigation controls (properly centered)
-            with ui.column().classes('flex-1 flex justify-center'):
+            with ui.column().classes('absolute left-1/2 transform -translate-x-1/2'):
                 with ui.row().classes('w-full justify-center items-center'):
-                    state.prev_button, state.total_images_folder, state.next_button = create_navigation_controls()
-
-                    state.metadata_input.value = "No image opened."
-                    state.metadata_exif.value = "No image opened."
-                    state.metadata_xmp.value = "No image opened."
-                    state.original_metadata = ""
-
-                    ui.update(state.metadata_input)
-                    ui.update(state.metadata_exif)
-                    ui.update(state.metadata_xmp)
+                    ui.button("Previous", icon="sym_o_arrow_back", on_click=lambda: navigate_image(-1))
+                    index_counter()
+                    ui.button("Next", icon="sym_o_arrow_forward", on_click=lambda: navigate_image(1))                    
 
             # Right Section: Settings button (stays right-aligned)
             with ui.column().classes('flex justify-end'):
