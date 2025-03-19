@@ -26,7 +26,6 @@ async def update_metadata_display():
 	if not state.current_image:
 		return  # No image loaded yet
 
-	print("Updating the metadata from file ...")
 	xmp = await get_xmp_description(state.current_image)
 	exif = await get_exif_description(state.current_image)
 	state.metadata_input.value = xmp if xmp else convert_from_ascii(exif)

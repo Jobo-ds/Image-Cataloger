@@ -15,15 +15,6 @@ import config
 import tkinter as tk
 from tkinter import filedialog
 
-def check_tasks_done(future_image, future_metadata):
-    """Checks if both tasks are done, then hides spinners."""
-    if future_image.done() and future_metadata.done():
-        ui.timer(0.5, lambda: (state.image_spinner.hide(), state.editor_spinner.hide()), once=True)
-    else:
-        ui.timer(0.1, lambda: check_tasks_done(future_image, future_metadata), once=True)
-
-
-
 async def open_image():
 	"""
 	Asynchronously opens a file dialog and loads the selected image.
@@ -56,47 +47,53 @@ async def load_image(image_path):
     Loads an image, using the buffer if available, and extracts metadata.
     """
 
+    # Image buffering
+    state.latest_image_request = image_path
+    state.current_image = image_path
+
+    # Activate Spinners
     state.image_spinner.show()
     state.editor_spinner.show()
 
+    # Check if image actually exists.
     image_path = Path(image_path)
     if not await asyncio.to_thread(image_path.exists):
-        state.error_dialog.show("File does not exist.", "Confirm the image file exists, and try again.")
+        state.error_dialog.show(
+            "File does not exist.", 
+            "Confirm the image file exists, and try again.")
         state.image_spinner.hide()
         state.editor_spinner.hide()
         return
+    
+    if state.latest_image_task:
+        state.latest_image_task.cancel()
+        try:
+            await state.latest_image_task
+        except asyncio.CancelledError:
+            print(f"Cancelled previous image load for {image_path}")
+        except Exception as e:
+            state.error_dialog(
+                f"Error when changing image",
+                "Something bad happened while cancelling the previous loading task. Please restart the program.",
+                {e}
+            )
 
-    state.current_image = image_path
-
+    # Start getting Metadata
+    metadata_task = asyncio.create_task(extract_metadata(image_path))
     # Process image or use buffer
     if image_path in state.image_buffer:
-        # Run tasks in parallel but ensure they complete
-        image_task = asyncio.create_task(display_image(state.image_buffer[image_path]))
-        metadata_task = asyncio.create_task(extract_metadata(image_path))
-        
-        await asyncio.gather(image_task, metadata_task)
-
-        # Ensure both tasks completed before hiding spinners
-        if image_task.done() and metadata_task.done():
+        img_data = state.image_buffer[image_path]
+        if metadata_task.done():
+            display_image(img_data)
             state.image_spinner.hide()
             state.editor_spinner.hide()
-        else:
-            # Retry hiding after a short delay if not done yet
-            ui.timer(0.5, lambda: (state.image_spinner.hide(), state.editor_spinner.hide()), once=True)             
     else:
-        # Run tasks in parallel but ensure they complete
         image_task = asyncio.create_task(process_image_for_display(image_path))
-        metadata_task = asyncio.create_task(extract_metadata(image_path))
-        
         await asyncio.gather(image_task, metadata_task)
+        display_image(state.image_buffer[image_path])
+        state.image_spinner.hide()
+        state.editor_spinner.hide()        
 
-        # Ensure both tasks completed before hiding spinners
-        if image_task.done() and metadata_task.done():
-            state.image_spinner.hide()
-            state.editor_spinner.hide()
-        else:
-            # Retry hiding after a short delay if not done yet
-            ui.timer(0.5, lambda: (state.image_spinner.hide(), state.editor_spinner.hide()), once=True)
 
     if config.DEVELOPMENT_MODE:
         display_memory_usage()
@@ -121,9 +118,8 @@ async def process_image_for_display(image_path):
             if len(state.image_buffer) >= config.IMAGE_BUFFER_SIZE:
                 state.image_buffer.popitem(last=False)  # Remove the oldest entry
 
+            # Cache the image
             state.image_buffer[image_path] = base64_image
-
-            await display_image(base64_image)
 
     except Exception as e:
         state.error_dialog.show(
@@ -131,10 +127,17 @@ async def process_image_for_display(image_path):
             "Please try again, and confirm the image works in a different program.", 
             f"{e}")
 
-async def display_image(image_data):
+def display_image(image_data):
     """
     Updates the UI with the processed image and hides the spinner.
     """
+
+    if not image_data:
+        state.error_dialog.show(
+            "Could not display image",
+            "No image data was found."
+        )
+        return
     try:
         if state.image_display:
             state.image_display.set_source(image_data)

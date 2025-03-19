@@ -33,15 +33,14 @@ class AppState:
 		self.image_display = None # Global image display widget.
 		# Metadata
 		self.metadata_input = None # Field for edit/set metadata.
-		self.metadata_exif = None # Get EXIF metadata.
-		self.metadata_xmp = None # Get XMP metadata.
+		self.metadata_exif = None # Textarea with EXIF metadata (readonly)
+		self.metadata_xmp = None # TextArea with XMP metadata (readonly)
 		self.metadata_xmp_langs = None # Not used yet. For multi lang support.
 		# Buttons
 		self.undo_button = None # Undo button for metadata changes.
 		self.prev_button = None # Previous image button.
 		self.next_button = None # Next image button.
-		# App data
-		self.image_buffer = OrderedDict() # Cache for images.
+		# Image Data
 		self.current_image = None # Current image path.
 		self.original_metadata = None # Original metadata for current image, used by "undo".
 		self.current_image_index = None # The index of the current image in the folder.
@@ -53,6 +52,10 @@ class AppState:
 		self.exiftool_path = get_exiftool_path() # Path to ExifTool executable.
 		# Queues
 		self.save_queue = asyncio.Queue() # Queue for saving metadata.
+		# Image buffer
+		self.image_buffer = OrderedDict() # Cache for images.
+		self.latest_image_request = None # Tracking the latest requested image.
+		self.latest_image_task = None # The latest process image task.
 
 # Create a single instance of AppState to be shared across the app
 state = AppState()
