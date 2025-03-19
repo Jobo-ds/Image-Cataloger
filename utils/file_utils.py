@@ -39,170 +39,180 @@ async def open_image():
 		print("No file selected.")
 		return
 
-	await load_image(Path(file_path))
+
+	# Cancel previous image loading task if it's still running
+	if state.latest_image_task:
+		state.latest_image_task.cancel()
+		try:
+			await state.latest_image_task  # Wait for it to cancel properly
+		except asyncio.CancelledError:
+			print(f"Cancelled previous image loading task.")
+		except Exception as e:
+			state.error_dialog.show(
+				"Error cancelling previous image",
+				"Something went wrong when stopping the previous image load. Please try again.",
+				f"{e}"
+			)
+
+	# Start loading new image
+	state.latest_image_task = asyncio.create_task(load_image(Path(file_path)))
 
 
 async def load_image(image_path):
-    """
-    Loads an image, using the buffer if available, and extracts metadata.
-    """
+	"""
+	Loads an image, using the buffer if available, and extracts metadata.
+	"""
+	try:
+		# Image buffering
+		state.current_image = image_path
 
-    # Image buffering
-    state.latest_image_request = image_path
-    state.current_image = image_path
+		# Activate Spinners
+		state.image_spinner.show()
+		state.editor_spinner.show()
 
-    # Activate Spinners
-    state.image_spinner.show()
-    state.editor_spinner.show()
+		# Check if image actually exists.
+		image_path = Path(image_path)
+		if not await asyncio.to_thread(image_path.exists):
+			state.error_dialog.show(
+				"File does not exist.", 
+				"Confirm the image file exists, and try again.")
+			state.image_spinner.hide()
+			state.editor_spinner.hide()
+			return
 
-    # Check if image actually exists.
-    image_path = Path(image_path)
-    if not await asyncio.to_thread(image_path.exists):
-        state.error_dialog.show(
-            "File does not exist.", 
-            "Confirm the image file exists, and try again.")
-        state.image_spinner.hide()
-        state.editor_spinner.hide()
-        return
-    
-    if state.latest_image_task:
-        state.latest_image_task.cancel()
-        try:
-            await state.latest_image_task
-        except asyncio.CancelledError:
-            print(f"Cancelled previous image load for {image_path}")
-        except Exception as e:
-            state.error_dialog(
-                f"Error when changing image",
-                "Something bad happened while cancelling the previous loading task. Please restart the program.",
-                {e}
-            )
+		# Start getting Metadata
+		metadata_task = asyncio.create_task(extract_metadata(image_path))
 
-    # Start getting Metadata
-    metadata_task = asyncio.create_task(extract_metadata(image_path))
-    # Process image or use buffer
-    if image_path in state.image_buffer:
-        img_data = state.image_buffer[image_path]
-        if metadata_task.done():
-            display_image(img_data)
-            state.image_spinner.hide()
-            state.editor_spinner.hide()
-    else:
-        image_task = asyncio.create_task(process_image_for_display(image_path))
-        await asyncio.gather(image_task, metadata_task)
-        display_image(state.image_buffer[image_path])
-        state.image_spinner.hide()
-        state.editor_spinner.hide()        
+		# Process image or use buffer
+		cache_task = None # For the asyncio.gather.
+		if image_path not in state.image_cache:
+			cache_task = asyncio.create_task(cache_image(image_path))
 
+		tasks = [metadata_task]
+		if cache_task:
+			tasks.append(cache_task)
 
-    if config.DEVELOPMENT_MODE:
-        display_memory_usage()
+		await asyncio.gather(*tasks)
+		await asyncio.gather(display_image(state.image_cache[image_path]), display_metadata())
+	except Exception as e:
+		state.error_dialog.show(
+			f"Could not load image.", 
+			"Please try again, and confirm the image works in a different program.", 
+			f"{e}")
+	finally:
+		state.image_spinner.hide()
+		state.editor_spinner.hide()
 
-async def process_image_for_display(image_path):
-    """
-    Converts the image to an in-memory JPG Base64 string for NiceGUI display.
-    """
-    try:
-        with Image.open(image_path) as img:
-            if img.mode != "RGB":
-                img = img.convert("RGB")
-            img_io = BytesIO()
-            img.save(img_io, format="JPEG", quality=50)  # Compress for low memory
-            img_io.seek(0)
+async def cache_image(image_path):
+	"""
+	Converts the image to an in-memory JPG Base64 string for NiceGUI display.
+	"""
+	try:
+		with Image.open(image_path) as img:
+			if img.mode != "RGB":
+				img = img.convert("RGB")
+			img_io = BytesIO()
+			img.save(img_io, format="JPEG", quality=50)  # Compress for low memory
+			img_io.seek(0)
 
-            # Convert to Base64 for nicegui
-            base64_str = base64.b64encode(img_io.getvalue()).decode("utf-8")
-            base64_image = f"data:image/jpeg;base64,{base64_str}"
+			# Convert to Base64 for nicegui
+			base64_str = base64.b64encode(img_io.getvalue()).decode("utf-8")
+			base64_image = f"data:image/jpeg;base64,{base64_str}"
 
-            # Store in the buffer (Remove oldest if full)
-            if len(state.image_buffer) >= config.IMAGE_BUFFER_SIZE:
-                state.image_buffer.popitem(last=False)  # Remove the oldest entry
+			# Store in the buffer (Remove oldest if full)
+			if len(state.image_cache) >= config.IMAGE_CACHE_SIZE:
+				state.image_cache.popitem(last=False)  # Remove the oldest entry
 
-            # Cache the image
-            state.image_buffer[image_path] = base64_image
+			# Cache the image in buffer
+			state.image_cache[image_path] = base64_image
 
-    except Exception as e:
-        state.error_dialog.show(
-            f"Could not process {image_path.name} for app.", 
-            "Please try again, and confirm the image works in a different program.", 
-            f"{e}")
+	except Exception as e:
+		state.error_dialog.show(
+			f"Could not process {image_path.name} for app.", 
+			"Please try again, and confirm the image works in a different program.", 
+			f"{e}")
 
-def display_image(image_data):
-    """
-    Updates the UI with the processed image and hides the spinner.
-    """
+async def display_image(cached_image):
+	"""
+	Updates the UI with the processed image and hides the spinner.
+	"""
 
-    if not image_data:
-        state.error_dialog.show(
-            "Could not display image",
-            "No image data was found."
-        )
-        return
-    try:
-        if state.image_display:
-            state.image_display.set_source(image_data)
-        else:
-            print("Warning: Image display UI not initialized yet.")
-    except Exception as e:
-        state.error_dialog.show(
-            f"Could not display image.", 
-            "Please try again, and confirm the image works in a different program.", 
-            f"{e}")
+	if not cached_image:
+		state.error_dialog.show(
+			"Could not display image",
+			"No image data was found."
+		)
+		return
+	try:
+		if state.image_display:
+			state.image_display.set_source(cached_image)
+		else:
+			print("Warning: Image display UI not initialized yet.")
+	except Exception as e:
+		state.error_dialog.show(
+			f"Could not display image.", 
+			"Please try again, and confirm the image works in a different program.", 
+			f"{e}")
 
 async def extract_metadata(image_path):
-    """
-    Extracts EXIF/XMP metadata and updates the UI in the background.
-    """
-    try:
+	"""
+	Extracts EXIF/XMP metadata and updates the UI in the background.
+	"""
+	try:
+		# Reset buffers
+		state.xmp_buffer = None
+		state.exif_buffer = None
+		state.input_buffer = None
+		state.original_metadata = None
+		
+		# Get file extension in lowercase
+		extension = image_path.suffix.lower()
 
-        # Get file extension in lowercase
-        extension = image_path.suffix.lower()
+		# Define supported formats
+		supported_exif = {".jpg", ".jpeg", ".tiff", ".tif"}  # EXIF supported formats
+		supported_xmp = {".jpg", ".jpeg", ".tiff", ".tif", ".png"}  # XMP supported formats
 
-        # Define supported formats
-        supported_exif = {".jpg", ".jpeg", ".tiff", ".tif"}  # EXIF supported formats
-        supported_xmp = {".jpg", ".jpeg", ".tiff", ".tif", ".png"}  # XMP supported formats
+		if extension in supported_xmp:
+			state.xmp_buffer = await get_xmp_description(image_path)
+		if extension in supported_exif:
+			state.exif_buffer = await get_exif_description(image_path)
 
-        xmp_description = False
-        exif_description = False
+		# Set input buffer
+		if state.xmp_buffer:
+			state.input_buffer = state.xmp_buffer
+		elif state.exif_buffer:
+			state.input_buffer = convert_to_ascii(state.exif_buffer)
+		else:
+			state.input_buffer = ""
 
-        if extension in supported_xmp:
-            xmp_description = await get_xmp_description(image_path)
-        if extension in supported_exif:
-            exif_description = await get_exif_description(image_path)
+	except Exception as e:
+		state.error_dialog.show(
+			f"Unable to extract metadata", 
+			"The app was not able to extract the EXIF or XMP data from this image.", 
+			f"{e}")
+		
+async def display_metadata():
+	# XMP Field
+	if state.xmp_buffer:
+		state.metadata_xmp.value = state.xmp_buffer
+		state.metadata_xmp.classes(remove="text-italic")
+	else:
+		state.metadata_xmp.value = "No XMP metadata found."
+		state.metadata_xmp.classes(add="text-italic")
+	
+	# EXIF Field
+	if state.exif_buffer:
+		state.metadata_exif.value = state.exif_buffer
+		state.metadata_exif.classes(remove="text-italic")
+	else:
+		state.metadata_exif.value = "No EXIF metadata found."
+		state.metadata_exif.classes(add="text-italic")
 
-        # Input Field
-        if xmp_description:
-            state.metadata_input.value = xmp_description
-        elif exif_description:
-            state.metadata_input.value = convert_to_ascii(exif_description)
-        else:
-            state.metadata_input.value = ""
+	# Input Field
+	state.metadata_input.value = state.input_buffer
+	state.original_metadata = state.metadata_input.value
 
-        # XMP Field
-        if xmp_description:
-            state.metadata_xmp.value = xmp_description
-            state.metadata_xmp.classes(remove="text-italic")
-        else:
-            state.metadata_xmp.value = "No XMP metadata found."
-            state.metadata_xmp.classes(add="text-italic")
-        
-        # EXIF Field
-        if exif_description:
-            state.metadata_exif.value = exif_description
-            state.metadata_exif.classes(remove="text-italic")
-        else:
-            state.metadata_exif.value = "No EXIF metadata found."
-            state.metadata_exif.classes(add="text-italic")
-
-        state.original_metadata = state.metadata_input.value
-
-        # Update UI
-        ui.update(state.metadata_input)
-        ui.update(state.metadata_exif)
-        ui.update(state.metadata_xmp)
-
-    except Exception as e:
-        state.error_dialog.show(
-            f"Unable to extract metadata", 
-            "The app was not able to extract the EXIF or XMP data from this image.", 
-            f"{e}")
+	# Update UI
+	ui.update(state.metadata_input)
+	ui.update(state.metadata_exif)
+	ui.update(state.metadata_xmp)

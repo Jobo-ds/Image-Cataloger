@@ -36,6 +36,9 @@ class AppState:
 		self.metadata_exif = None # Textarea with EXIF metadata (readonly)
 		self.metadata_xmp = None # TextArea with XMP metadata (readonly)
 		self.metadata_xmp_langs = None # Not used yet. For multi lang support.
+		self.input_buffer = None # Buffer for holding the input value
+		self.xmp_buffer = None # Buffer for holding xmp value
+		self.exif_buffer = None # Buffer forholding exif value
 		# Buttons
 		self.undo_button = None # Undo button for metadata changes.
 		self.prev_button = None # Previous image button.
@@ -53,8 +56,7 @@ class AppState:
 		# Queues
 		self.save_queue = asyncio.Queue() # Queue for saving metadata.
 		# Image buffer
-		self.image_buffer = OrderedDict() # Cache for images.
-		self.latest_image_request = None # Tracking the latest requested image.
+		self.image_cache = OrderedDict() # Cache for images.
 		self.latest_image_task = None # The latest process image task.
 
 # Create a single instance of AppState to be shared across the app
