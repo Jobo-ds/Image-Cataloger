@@ -39,7 +39,8 @@ class AppState:
 		self.image_display = None # Image display ui element.
 		self.undo_button = None # Undo button for metadata changes.
 		self.prev_button = None # Previous image button.
-		self.next_button = None # Next image button.		
+		self.next_button = None # Next image button.	
+		self.nav_txt = "0 / 0" 	
 		
 		# Metadata
 		self.metadata_input = None # Field for edit/set metadata.

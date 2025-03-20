@@ -72,6 +72,7 @@ async def open_image():
 		# Immediately load and show the first image first!
 		state.latest_image_task = asyncio.create_task(load_image(Path(file_path)))
 		await state.latest_image_task
+		state.image_display.classes(remove="w-1/6", add="w-full")
 
 		# Queue background caching
 		await update_cache_window(state.nav_img_index)
@@ -84,6 +85,10 @@ async def load_image(image_path):
 	"""
 	try:
 		state.current_image = image_path
+		# Prepare indexing of images
+		state.nav_img_index = state.nav_img_list.index(Path(image_path))
+		state.nav_txt = f"{state.nav_img_index + 1} / {state.nav_img_total}"
+		state.nav_counter.refresh()	
 
 		# Activate Spinners
 		state.image_spinner.show()

@@ -23,7 +23,7 @@ def create_metadata_section():
 		tab_xmp = ui.tab('View XMP')
 		tab_exif = ui.tab('View EXIF')
 		undo_button = ui.button("Undo",icon="sym_o_undo", on_click=lambda: save_metadata(undo=True)).classes(
-				"p-2 absolute right-0")
+				"p-2 absolute right-0").classes('std-btn')
 	
 	with ui.tab_panels(tabs, value=tab_editor).classes('w-full bg-transparent h-[130px]').props('transition-prev="fade" transition-next="fade"'):
 		with ui.tab_panel(tab_editor):

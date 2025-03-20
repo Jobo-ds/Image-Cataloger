@@ -29,3 +29,10 @@
     padding: 0px 16px !important;
     min-height: 2.572em !important;
 }
+
+/* Custom styles */
+
+.std-btn {
+    background: oklch(0.446 0.03 256.802) !important;
+    color: white !important;
+}
