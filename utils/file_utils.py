@@ -14,11 +14,12 @@ from io import BytesIO
 import config
 import tkinter as tk
 from tkinter import filedialog
+import cv2
 
 async def open_image():
 	"""
 	Asynchronously opens a file dialog and loads the selected image.
-	"""
+	"""	
 	async with state.nav_lock:
 		loop = asyncio.get_event_loop()
 
@@ -59,13 +60,15 @@ async def open_image():
 		folder = Path(file_path).parent		
 		state.nav_folder = folder
 		state.nav_img_list = sorted(folder.glob("*.jpg")) + sorted(folder.glob("*.jpeg")) + sorted(folder.glob("*.png")) + sorted(folder.glob("*.tiff")) + sorted(folder.glob("*.tif"))
-		print(state.nav_img_list)
 		state.nav_img_index = state.nav_img_list.index(Path(file_path))
 		state.nav_img_total = len(state.nav_img_list)
 		state.nav_txt = f"{state.nav_img_index + 1} / {state.nav_img_total}"
 		state.nav_counter.refresh()
-		# Start loading new image
+		# Immediately load and show the first image first!
 		state.latest_image_task = asyncio.create_task(load_image(Path(file_path)))
+
+		# Start caching in the background without blocking user experience
+		asyncio.create_task(update_cache_window(state.nav_img_index))
 
 
 async def load_image(image_path):
@@ -73,7 +76,6 @@ async def load_image(image_path):
 	Loads an image, using the buffer if available, and extracts metadata.
 	"""
 	try:
-		# Image buffering
 		state.current_image = image_path
 
 		# Activate Spinners
@@ -86,24 +88,25 @@ async def load_image(image_path):
 			state.error_dialog.show(
 				"File does not exist.", 
 				"Confirm the image file exists, and try again.")
-			state.image_spinner.hide()
-			state.editor_spinner.hide()
 			return
 
 		# Start getting Metadata
 		metadata_task = asyncio.create_task(extract_metadata(image_path))
 
-		# Process image or use buffer
-		cache_task = None # For the asyncio.gather.
-		if image_path not in state.image_cache:
+		# Get cached image
+		cached_image = state.image_cache.get(image_path)
+		if cached_image is None:
 			cache_task = asyncio.create_task(cache_image(image_path))
+		else:
+			cache_task = None
 
 		tasks = [metadata_task]
 		if cache_task:
 			tasks.append(cache_task)
 
 		await asyncio.gather(*tasks)
-		await asyncio.gather(display_image(state.image_cache[image_path]), display_metadata())
+		cached_image = state.image_cache.get(image_path)
+		await asyncio.gather(display_image(cached_image), display_metadata())
 	except Exception as e:
 		state.error_dialog.show(
 			f"Could not load image.", 
@@ -119,23 +122,25 @@ async def cache_image(image_path):
 	Quickly converts the image to a compressed in-memory JPG Base64 string for NiceGUI.
 	"""
 	try:
-		with Image.open(image_path) as img:
-			if img.mode != "RGB":
-				img = img.convert("RGB")
-			img_io = BytesIO()
-			img.save(img_io, format="JPEG", quality=50)  # Compress for low memory
-			img_io.seek(0)
+		if image_path is None:
+			raise ValueError("Attempted to read None Image.")
+		
+		img = cv2.imread(image_path, cv2.IMREAD_COLOR)
+		if img is None:
+			raise ValueError("Image could not be loaded by OpenCV.")
+		
+		height, width = img.shape[:2]
 
-			# Convert to Base64 for nicegui
-			base64_str = base64.b64encode(img_io.getvalue()).decode("utf-8")
-			base64_image = f"data:image/jpeg;base64,{base64_str}"
+		scale = min(1.0, 1920 / max(height, width))
+		if scale < 1.0:
+			img = cv2.resize(img, (int(width * scale), int(height * scale)), interpolation=cv2.INTER_AREA)
 
-			# Store in the buffer (Remove oldest if full)
-			if len(state.image_cache) >= config.IMAGE_CACHE_SIZE:
-				state.image_cache.popitem(last=False)  # Remove the oldest entry
-
-			# Cache the image in buffer
-			state.image_cache[image_path] = base64_image
+		success, jpeg_buf = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 60])
+		if not success:
+			raise ValueError("Failed to encode image.")
+		
+		base64_image = f"data:image/jpeg;base64,{base64.b64encode(jpeg_buf).decode('utf-8')}"
+		state.image_cache.add(image_path, base64_image)
 
 	except Exception as e:
 		state.error_dialog.show(
@@ -143,27 +148,83 @@ async def cache_image(image_path):
 			"Please try again, and confirm the image works in a different program.", 
 			f"{e}")
 
+def calculate_cache_indices(current_index: int, total_images: int, window_size: int = 25) -> set:
+	"""
+	Calculate indices for caching, handling wrap-around logic clearly.
+
+	Args:
+		current_index (int): The current index in the navigation.
+		total_images (int): The total number of images in the current folder.
+		window_size (int): Number of images to cache before and after current.
+
+	Returns:
+		set: A set of calculated indices for caching.
+	"""
+	indices = set()
+	for offset in range(-window_size, window_size + 1):
+		wrapped_index = (current_index + offset) % total_images
+		indices.add(wrapped_index)
+	return indices
+
+async def update_cache_window(current_index: int, threshold: int = 10, window_size: int = 25):
+	"""
+	Updates image cache proactively around the current image index.
+
+	Args:
+		current_index (int): Current navigation index.
+		threshold (int): Distance from last cached center to trigger re-caching.
+		window_size (int): Images to cache on each side of the current index.
+	"""
+	total_images = state.nav_img_total
+	image_list = state.nav_img_list
+
+	# Check if caching is necessary
+	if state.cached_center_index is not None:
+		distance_moved = abs(current_index - state.cached_center_index)
+		if distance_moved < threshold:
+			return
+	
+	state.cached_center_index = current_index
+
+	# Calculate new indices
+	new_indices = calculate_cache_indices(current_index, total_images, window_size)
+	new_window_set = {image_list[i] for i in new_indices}
+
+	# Evict images no longer within the new window
+	images_to_evict = set(state.image_cache.cache.keys()) - new_window_set
+	state.image_cache.evict(images_to_evict)
+
+	# Cancel previous cache tasks if rapidly navigating
+	if state.latest_cache_tasks is not None:
+		for task in state.latest_cache_tasks:
+			if not task.done():
+				task.cancel()
+	else:
+		state.latest_cache_tasks = []
+
+	# Add new images to cache asynchronously
+	for img_path in new_window_set:
+		if not state.image_cache.has(img_path):
+			task = asyncio.create_task(cache_image(img_path))
+			state.latest_cache_tasks.append(task)
+
 async def display_image(cached_image):
 	"""
 	Updates the UI with the processed image and hides the spinner.
 	"""
-
-	if not cached_image:
-		state.error_dialog.show(
-			"Could not display image",
-			"No image data was found."
-		)
-		return
-	try:
+	if cached_image:
 		if state.image_display:
 			state.image_display.set_source(cached_image)
 		else:
-			print("Warning: Image display UI not initialized yet.")
-	except Exception as e:
+			state.error_dialog.show(
+				"Image display not initialized yet.",
+				"Please try again."
+			)
+	else:
 		state.error_dialog.show(
-			f"Could not display image.", 
-			"Please try again, and confirm the image works in a different program.", 
-			f"{e}")
+			"Image not cached.",
+			"The requested image is not cached yet. Please try again."
+		)
 
 async def extract_metadata(image_path):
 	"""

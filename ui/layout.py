@@ -1,10 +1,10 @@
 import asyncio
 from nicegui import ui, app
 from ui.editor import create_metadata_section
-from utils.file_navigation import navigate_image
 from ui.spinners import PremadeSpinner
 from utils.file_utils import open_image
 from utils.state import state
+from utils.file_navigation import navigate_next, navigate_prev
 
 @ui.refreshable
 def index_counter():
@@ -48,9 +48,9 @@ def setup_ui():
             # Center Section: Navigation controls (properly centered)
             with ui.column().classes('absolute left-1/2 transform -translate-x-1/2'):
                 with ui.row().classes('w-full justify-center items-center'):
-                    ui.button("Previous", icon="sym_o_arrow_back", on_click=lambda: navigate_image(-1))
+                    ui.button("Previous", icon="sym_o_arrow_back", on_click=lambda: asyncio.create_task(navigate_prev()))
                     index_counter()
-                    ui.button("Next", icon="sym_o_arrow_forward", on_click=lambda: navigate_image(1))                    
+                    ui.button("Next", icon="sym_o_arrow_forward", on_click=lambda: asyncio.create_task(navigate_next()))                    
 
             # Right Section: Settings button (stays right-aligned)
             with ui.column().classes('flex justify-end'):

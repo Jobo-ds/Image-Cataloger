@@ -5,6 +5,7 @@ from ui.dialogs import ErrorDialog
 from collections import OrderedDict
 import shlex
 from nicegui import ui, Client
+from utils.cache import ImageCache
 
 def get_exiftool_path():
 	path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "tools", "exiftool", "exiftool.exe"))
@@ -12,17 +13,11 @@ def get_exiftool_path():
 		return path
 	else:
 		return shlex.quote(path)  # Only needed for Unix
-	
-def get_turbojpeg_path():
-	path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "tools", "libjpeg-turbo", "bin", "turbojpeg.dll"))
-	if os.name == "nt":
-		return path
-	else:
-		return shlex.quote(path)  # Only needed for Unix	
-
 
 def notify(message: str, type: str = "info") -> None:
-    """Send a notification to all active clients safely."""
+    """
+	Send a notification to all active clients safely.
+	"""
     for client in Client.instances.values():
         if not client.has_socket_connection:
             continue
@@ -65,13 +60,14 @@ class AppState:
 		self.error_dialog = ErrorDialog() # Error dialog for displaying errors.
 		# Tools
 		self.exiftool_path = get_exiftool_path() # Path to ExifTool executable.
-		self.turbojpeg_path = get_turbojpeg_path() # Path to TurboJPEG DLL
 		# Queues
 		self.save_queue = asyncio.Queue() # Queue for saving metadata.
-		# Image buffer
-		self.image_cache = OrderedDict() # Cache for images.
+		# Image Cache
+		self.cached_center_index = None # Last cached index center
+		self.image_cache = ImageCache(50) # Cache for images.
 		self.latest_image_task = None # The latest process image task.
 		self.nav_lock = asyncio.Lock() # Prevents overlapping the next/prev navigation.
+		self.latest_cache_tasks = [] # The latest cache img tasks
 
 # Create a single instance of AppState to be shared across the app
 state = AppState()
