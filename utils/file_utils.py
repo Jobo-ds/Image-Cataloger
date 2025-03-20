@@ -2,19 +2,23 @@
 import asyncio
 import base64
 import concurrent.futures
+import cv2
+import tkinter as tk
+from tkinter import filedialog
+
 from nicegui import ui
 from pathlib import Path
 from PIL import Image
+from io import BytesIO
+
 from metadata.exif_handler import get_exif_description
 from metadata.xmp_handler import get_xmp_description
 from utils.dev_tools import display_memory_usage, async_measure_execution_time
 from utils.string_utils import convert_to_ascii
 from utils.state import state
-from io import BytesIO
 import config
-import tkinter as tk
-from tkinter import filedialog
-import cv2
+
+
 
 async def open_image():
 	"""
@@ -64,10 +68,13 @@ async def open_image():
 		state.nav_img_total = len(state.nav_img_list)
 		state.nav_txt = f"{state.nav_img_index + 1} / {state.nav_img_total}"
 		state.nav_counter.refresh()
+
 		# Immediately load and show the first image first!
 		state.latest_image_task = asyncio.create_task(load_image(Path(file_path)))
 		await state.latest_image_task
-		asyncio.create_task(update_cache_window(state.nav_img_index))
+
+		# Queue background caching
+		await update_cache_window(state.nav_img_index)
 		
 
 
@@ -96,7 +103,7 @@ async def load_image(image_path):
 		# Get cached image
 		cached_image = state.image_cache.get(image_path)
 		if cached_image is None:
-			cache_task = asyncio.create_task(cache_image(image_path))
+			cache_task = asyncio.create_task(asyncio.to_thread(cache_image, image_path))
 		else:
 			cache_task = None
 
@@ -121,7 +128,7 @@ async def load_image(image_path):
 		state.image_spinner.hide()
 		state.editor_spinner.hide()
 
-async def cache_image(image_path):
+def cache_image(image_path):
 	"""
 	Quickly converts the image to a compressed in-memory JPG Base64 string for NiceGUI.
 	"""
@@ -210,8 +217,7 @@ async def update_cache_window(current_index: int, threshold: int = 10, window_si
 	# Add new images to cache asynchronously
 	for img_path in new_window_set:
 		if not state.image_cache.has(img_path):
-			task = asyncio.create_task(cache_image(img_path))
-			state.latest_cache_tasks.append(task)
+			await state.cache_queue.put(img_path)
 
 async def display_image(cached_image):
 	"""

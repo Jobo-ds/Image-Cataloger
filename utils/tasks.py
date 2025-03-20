@@ -1,9 +1,11 @@
 from utils.state import state, notify
 from utils.string_utils import convert_to_ascii
+from utils.file_utils import cache_image
 from metadata.exif_handler import set_exif_description
 from metadata.xmp_handler import set_xmp_description
 from ui.editor import update_metadata_display
 from nicegui import ui
+import asyncio
 
 
 async def save_metadata_queue():
@@ -85,3 +87,22 @@ async def save_metadata_queue():
 				{e}
 			)
 			break  # Prevent infinite errors if something goes wrong
+
+async def start_cache_worker():
+	"""Ensure the cache worker is running."""
+	if state.bg_cache_task is None or state.bg_cache_task.done():
+		state.bg_cache_task = asyncio.create_task(cache_worker())
+		
+async def cache_worker():
+	"""
+	Background task that processes cache requests sequentially.
+	"""
+	while True:
+		img_path = await state.cache_queue.get()
+		if img_path is None:
+			break  # Exit gracefully if we enqueue None as a stop signal
+		try:
+			await asyncio.get_running_loop().run_in_executor(state.cache_executor, cache_image, img_path)
+		except Exception as e:
+			print(f"Error caching image {img_path}: {e}")
+		state.cache_queue.task_done()
