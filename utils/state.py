@@ -7,6 +7,7 @@ import shlex
 from nicegui import ui, Client
 from utils.cache import ImageCache
 from concurrent.futures import ThreadPoolExecutor
+import exiftool
 
 def get_exiftool_path():
 	path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "tools", "exiftool", "exiftool.exe"))
@@ -75,7 +76,8 @@ class AppState:
 		self.nav_counter = None # The element itself.
 
 		# Tools
-		self.exiftool_path = get_exiftool_path() # Path to ExifTool executable.		
+		self.exiftool_path = get_exiftool_path() # Path to ExifTool executable.
+		self.exiftool_process = exiftool.ExifToolHelper(executable=str(self.exiftool_path)) # Keep an exiftool process running
 
 		# Dialogs
 		self.error_dialog = ErrorDialog() # Error dialog for displaying errors.		

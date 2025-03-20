@@ -10,13 +10,15 @@ async def get_exif_description(image_path):
 	Extract EXIF description asynchronously using ExifTool.
 	"""
 	try:
+		if state.exiftool_process is None:
+			state.exiftool_process = exiftool.ExifToolHelper(executable=str(state.exiftool_path))
+
 		# Ensure the file actually exists before calling subprocess
 		if not os.path.isfile(state.exiftool_path) or not os.path.isfile(image_path):
 			raise FileNotFoundError(f"A required file was not found at either {state.exiftool_path} or {image_path}.")
 
-		with exiftool.ExifToolHelper(executable=str(state.exiftool_path)) as et:
-			metadata = et.get_tags(image_path, ["EXIF:ImageDescription"])
-			return metadata[0].get("EXIF:ImageDescription", False)
+		metadata = state.exiftool_process.get_tags(image_path, ["EXIF:ImageDescription"])
+		return metadata[0].get("EXIF:ImageDescription", False)
 
 	except Exception as e:
 		state.error_dialog.show(
@@ -38,6 +40,10 @@ async def set_exif_description(image_path, new_description:str):
 	"""
 
 	try:
+
+		if state.exiftool_process is None:
+			state.exiftool_process = exiftool.ExifToolHelper(executable=str(state.exiftool_path))
+
 		# Ensure the file actually exists before calling subprocess
 		if not os.path.isfile(state.exiftool_path) or not os.path.isfile(image_path):
 			raise FileNotFoundError(f"A required file was not found at either {state.exiftool_path} or {image_path}.")
@@ -46,11 +52,10 @@ async def set_exif_description(image_path, new_description:str):
 			"EXIF:ImageDescription": new_description
 		}
 
-		with exiftool.ExifToolHelper(executable=str(state.exiftool_path)) as et:
-			et.set_tags(
-				image_path, 
-				tags=metadata_json,
-				params="-overwrite_original")
+		state.exiftool_process.set_tags(
+			image_path, 
+			tags=metadata_json,
+			params="-overwrite_original")
 		return True
 
 	except Exception as e:

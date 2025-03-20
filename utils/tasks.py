@@ -1,9 +1,8 @@
 from utils.state import state, notify
 from utils.string_utils import convert_to_ascii
-from utils.file_utils import cache_image
+from utils.file_utils import cache_image, extract_metadata, display_metadata
 from metadata.exif_handler import set_exif_description
 from metadata.xmp_handler import set_xmp_description
-from ui.editor import update_metadata_display
 from nicegui import ui
 import asyncio
 
@@ -74,7 +73,8 @@ async def save_metadata_queue():
 					f"{e}")
 
 			finally:
-					await update_metadata_display()
+					await extract_metadata
+					await display_metadata
 					state.metadata_input.props(remove="disable readonly")
 					state.editor_spinner.hide()
 					state.save_queue.task_done()

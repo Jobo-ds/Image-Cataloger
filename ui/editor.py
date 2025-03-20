@@ -1,9 +1,6 @@
 import asyncio
 from nicegui import ui
 from utils.state import state
-from utils.string_utils import convert_to_ascii, convert_from_ascii
-from metadata.xmp_handler import set_xmp_description, get_xmp_description
-from metadata.exif_handler import set_exif_description, get_exif_description
 from ui.spinners import PremadeSpinner
 
 
@@ -16,21 +13,6 @@ async def save_metadata(undo=False):
 		await state.save_queue.put(undo)  # Ensures we are putting a valid item
 	except Exception as e:
 		print(f"ERROR: Exception in save_metadata: {e}")
-
-
-
-async def update_metadata_display():
-	"""
-	Update the metadata display with the current image's metadata.
-	"""
-	if not state.current_image:
-		return  # No image loaded yet
-
-	xmp = await get_xmp_description(state.current_image)
-	exif = await get_exif_description(state.current_image)
-	state.metadata_input.value = xmp if xmp else convert_from_ascii(exif)
-	state.metadata_xmp.value = xmp
-	state.metadata_exif.value = exif
 
 def create_metadata_section():
 	"""
