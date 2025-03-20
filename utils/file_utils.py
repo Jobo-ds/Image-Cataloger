@@ -66,9 +66,9 @@ async def open_image():
 		state.nav_counter.refresh()
 		# Immediately load and show the first image first!
 		state.latest_image_task = asyncio.create_task(load_image(Path(file_path)))
-
-		# Start caching in the background without blocking user experience
+		await state.latest_image_task
 		asyncio.create_task(update_cache_window(state.nav_img_index))
+		
 
 
 async def load_image(image_path):
@@ -107,13 +107,17 @@ async def load_image(image_path):
 		await asyncio.gather(*tasks)
 		cached_image = state.image_cache.get(image_path)
 		await asyncio.gather(display_image(cached_image), display_metadata())
+		state.nav_counter.refresh()
+		state.image_spinner.hide()
+		state.editor_spinner.hide()
+		ui.update()
+
 	except Exception as e:
 		state.error_dialog.show(
 			f"Could not load image.", 
 			"Please try again, and confirm the image works in a different program.", 
 			f"{e}")
 	finally:
-		state.nav_counter.refresh()
 		state.image_spinner.hide()
 		state.editor_spinner.hide()
 
@@ -122,6 +126,7 @@ async def cache_image(image_path):
 	Quickly converts the image to a compressed in-memory JPG Base64 string for NiceGUI.
 	"""
 	try:
+		print(f"Caching {image_path.name}")
 		if image_path is None:
 			raise ValueError("Attempted to read None Image.")
 		
@@ -179,7 +184,7 @@ async def update_cache_window(current_index: int, threshold: int = 10, window_si
 	image_list = state.nav_img_list
 
 	# Check if caching is necessary
-	if state.cached_center_index is not None:
+	if state.cached_center_index:
 		distance_moved = abs(current_index - state.cached_center_index)
 		if distance_moved < threshold:
 			return
@@ -215,6 +220,7 @@ async def display_image(cached_image):
 	if cached_image:
 		if state.image_display:
 			state.image_display.set_source(cached_image)
+			ui.update(state.image_display)
 		else:
 			state.error_dialog.show(
 				"Image display not initialized yet.",

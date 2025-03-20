@@ -35,10 +35,9 @@ class AppState:
 		self.image_display = None # Global image display widget.
 		# Navigation
 		self.nav_folder = None # The current folder the program is operating in.
-		self.nav_img_index = None # The index of the current image in the list of images.
+		self.nav_img_index = 0 # The index of the current image in the list of images.
 		self.nav_img_list = None # A Path list of images in the folder.
-		self.nav_img_total = None # Len of images in folder
-		self.nav_txt = "No image opened.." # The text in the counter.
+		self.nav_img_total = 0 # Len of images in folder
 		self.nav_counter = None # The element itself.
 		# Metadata
 		self.metadata_input = None # Field for edit/set metadata.

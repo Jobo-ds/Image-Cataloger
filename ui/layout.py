@@ -5,11 +5,12 @@ from ui.spinners import PremadeSpinner
 from utils.file_utils import open_image
 from utils.state import state
 from utils.file_navigation import navigate_next, navigate_prev
+import time
 
 @ui.refreshable
 def index_counter():
 	"""Creates a label that updates dynamically when refreshed."""
-	return ui.label(state.nav_txt).classes("mx-4 text-gray-700 text-lg")
+	return ui.label("0/0").classes("mx-4 text-gray-700 text-lg")
 
 state.nav_counter = index_counter
 
