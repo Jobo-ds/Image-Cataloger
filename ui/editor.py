@@ -25,23 +25,25 @@ def create_metadata_section():
 		undo_button = ui.button("Undo",icon="sym_o_undo", on_click=lambda: save_metadata(undo=True)).classes(
 				"p-2 absolute right-0").classes('std-btn')
 	
-	with ui.tab_panels(tabs, value=tab_editor).classes('w-full bg-transparent h-[130px]').props('transition-prev="fade" transition-next="fade"'):
+	with ui.tab_panels(tabs, value=tab_editor).classes('w-full scrollbar bg-transparent min-h-[130px] max-h-[600px]').props('transition-prev="fade" transition-next="fade"'):
 		with ui.tab_panel(tab_editor):
 			dev_placeholder = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure awd a."
 			prod_placeholder = "No image description."
-			with ui.row().classes("w-full justify-center min-height-screen"):
-				validations =  {'Exif limit: 255 characters.': lambda value: len(value) < 255}
-				metadata_input = ui.textarea(placeholder=prod_placeholder, validation=validations).classes("w-full max-w-2xl").props("filled square autogrow readonly disable v-model='text'")
+			with ui.scroll_area():
+				with ui.row().classes("w-full justify-center min-height-screen"):				
+					metadata_input = ui.textarea(placeholder=prod_placeholder).classes("w-full max-w-2xl ").props("filled square autogrow readonly disable v-model='text'")
 
 		with ui.tab_panel(tab_xmp):
-			with ui.row().classes("w-full justify-center"):
-				metadata_xmp = ui.textarea(
-				).classes("w-full max-w-2xl no-scrollbar").props("filled readonly disable square autogrow rows=1")
+			with ui.scroll_area():
+				with ui.row().classes("w-full justify-center"):
+					metadata_xmp = ui.textarea(
+					).classes("w-full max-w-2xl no-scrollbar").props("filled readonly square autogrow rows=1")
 
 		with ui.tab_panel(tab_exif):
-			with ui.row().classes("w-full justify-center"):
-				metadata_exif = ui.textarea(
-				).classes("w-full max-w-2xl no-scrollbar").props("filled readonly disable square autogrow rows=1")
+			with ui.scroll_area():
+				with ui.row().classes("w-full justify-center"):
+					metadata_exif = ui.textarea(
+					).classes("w-full max-w-2xl no-scrollbar").props("filled readonly square autogrow rows=1")
 
 	state.editor_spinner = PremadeSpinner(containers=[metadata_input, metadata_xmp, metadata_exif], size="xl", classes="relative")
 

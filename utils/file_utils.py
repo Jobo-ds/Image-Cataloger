@@ -10,6 +10,7 @@ from nicegui import ui
 from pathlib import Path
 from PIL import Image
 from io import BytesIO
+import numpy as np
 
 from metadata.exif_handler import get_exif_description
 from metadata.xmp_handler import get_xmp_description
@@ -138,11 +139,23 @@ def cache_image(image_path):
 	"""
 	Quickly converts the image to a compressed in-memory JPG Base64 string for NiceGUI.
 	"""
+	def safe_imread(path):
+		try:
+			data = np.fromfile(str(path), dtype=np.uint8)
+			img = cv2.imdecode(data, cv2.IMREAD_COLOR)
+			return img
+		except Exception as e:
+			state.error_dialog.show(
+				f"safe_imread failed on {image_path.name}", 
+				"Please try again, and confirm the image works in a different program.", 
+				f"{e}")
+			return None
+
 	try:
 		if image_path is None:
 			raise ValueError("Attempted to read None Image.")
 		
-		img = cv2.imread(image_path, cv2.IMREAD_COLOR)
+		img = safe_imread(image_path)
 		if img is None:
 			raise ValueError("Image could not be loaded by OpenCV.")
 		

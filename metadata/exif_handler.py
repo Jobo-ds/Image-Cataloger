@@ -18,7 +18,8 @@ async def get_exif_description(image_path):
 			raise FileNotFoundError(f"A required file was not found at either {state.exiftool_path} or {image_path}.")
 
 		metadata = state.exiftool_process.get_tags(image_path, ["EXIF:ImageDescription"])
-		return metadata[0].get("EXIF:ImageDescription", False)
+		print(metadata)
+		return metadata[0].get("ImageDescription", False)
 
 	except Exception as e:
 		state.error_dialog.show(
@@ -54,8 +55,8 @@ async def set_exif_description(image_path, new_description:str):
 
 		state.exiftool_process.set_tags(
 			image_path, 
-			tags=metadata_json,
-			params="-overwrite_original")
+			tags_dict=metadata_json,
+			extra_args=["-charset", "utf8", "-overwrite_original"])
 		return True
 
 	except Exception as e:

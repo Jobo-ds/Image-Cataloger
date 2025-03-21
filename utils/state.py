@@ -7,7 +7,7 @@ import shlex
 from nicegui import ui, Client
 from utils.cache import ImageCache
 from concurrent.futures import ThreadPoolExecutor
-import exiftool
+from utils.exiftool_wrapper import PatchedExifTool
 
 def get_exiftool_path():
 	path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "tools", "exiftool", "exiftool.exe"))
@@ -40,7 +40,8 @@ class AppState:
 		self.undo_button = None # Undo button for metadata changes.
 		self.prev_button = None # Previous image button.
 		self.next_button = None # Next image button.	
-		self.nav_txt = "0 / 0" 	
+		self.nav_txt = "0 / 0"
+		self.app_status = None # Shows text underneath the editor.
 		
 		# Metadata
 		self.metadata_input = None # Field for edit/set metadata.
@@ -78,7 +79,8 @@ class AppState:
 
 		# Tools
 		self.exiftool_path = get_exiftool_path() # Path to ExifTool executable.
-		self.exiftool_process = exiftool.ExifToolHelper(executable=str(self.exiftool_path)) # Keep an exiftool process running
+		self.exiftool_process = PatchedExifTool(executable=str(self.exiftool_path)) # Keep an exiftool process running
+		self.exiftool_process.start()
 
 		# Dialogs
 		self.error_dialog = ErrorDialog() # Error dialog for displaying errors.		

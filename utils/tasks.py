@@ -27,8 +27,8 @@ async def save_metadata_queue():
 			extension = state.current_image.suffix.lower()
 
 			# Define supported formats, so we don't try to add meta data to unsupported files.
-			supported_exif = {".jpg", ".jpeg", ".tiff", ".tif"}  # EXIF supported formats
-			supported_xmp = {".jpg", ".jpeg", ".tiff", ".tif", ".png"}  # XMP supported formats
+			supported_exif = [".jpg", ".jpeg", ".tiff", ".tif"]  # EXIF supported formats
+			supported_xmp = [".jpg", ".jpeg", ".tiff", ".tif", ".png"]  # XMP supported formats
 
 			save_xmp = False
 			save_exif = False
@@ -40,7 +40,7 @@ async def save_metadata_queue():
 			if extension in supported_exif:
 				save_exif = True
 
-			new_description = str(state.metadata_input.value)
+			new_description = state.metadata_input.value
 
 			if undo and new_description == state.original_metadata:
 				notify("Nothing to undo.")
@@ -50,10 +50,10 @@ async def save_metadata_queue():
 			
 			try:
 				if save_xmp:
-					xmp_save_check = await set_xmp_description(state.current_image, state.original_metadata)
+					xmp_save_check = await set_xmp_description(state.current_image, new_description)
 				
 				if save_exif:
-					exif_save_check = await set_exif_description(state.current_image, convert_to_ascii(state.original_metadata))
+					exif_save_check = await set_exif_description(state.current_image, convert_to_ascii(new_description))
 
 				warnings = []
 				if not xmp_save_check and save_xmp:
@@ -74,7 +74,7 @@ async def save_metadata_queue():
 
 			finally:
 					await extract_metadata(state.current_image)
-					await display_metadata(state.current_image)
+					await display_metadata()
 					state.metadata_input.props(remove="disable readonly")
 					state.editor_spinner.hide()
 					state.save_queue.task_done()
@@ -84,7 +84,7 @@ async def save_metadata_queue():
 			state.error_dialog.show(
 				"App has crashed (Critical)",
 				"The background task for saving metadata has crashed. Please restart the app.",
-				{e}
+				str(e)
 			)
 			break  # Prevent infinite errors if something goes wrong
 

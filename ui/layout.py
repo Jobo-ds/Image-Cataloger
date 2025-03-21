@@ -47,6 +47,8 @@ def setup_ui():
 			state.metadata_exif = elements["exif"]
 			state.metadata_xmp = elements["xmp"]
 			state.undo_button = elements["undo"]
+		with ui.row():
+			state.metadata_status = ui.label("test").classes("text-sm text-gray-400")
 
 		# Navigation bar (fixed height, sticks to bottom)
 		with ui.row().classes('relative w-full pb-5 justify-center items-center bg-neutral-900'):
