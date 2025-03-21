@@ -35,20 +35,14 @@ def setup_ui():
 					ui.button("Settings", icon="sym_o_settings").classes('std-btn')
 			
 			with ui.row().classes('h-full w-full items-center justify-center pt-5 pb-5'):
-				state.image_spinner = PremadeSpinner([image_container], "xl", "absolute top-1/4 left-1/2 farts")
+				state.image_spinner = PremadeSpinner(size="xl", classes="absolute top-1/4 left-1/2")
 				state.image_display = ui.image('static/image.png').classes("w-1/6 max-h-full opacity-100").props(
 					'fit=scale-down loading="eager" fetchpriority="high" no-spinner no-native-menu no-transition'
 				)
 
 		# Metadata Editor (separate row below image)
-		with ui.row().classes('w-full justify-center shrink-0 bg-neutral-900 pt-4 border-t border-neutral-700'):
-			elements = create_metadata_section()
-			state.metadata_input = elements["input"]
-			state.metadata_exif = elements["exif"]
-			state.metadata_xmp = elements["xmp"]
-			state.undo_button = elements["undo"]
-		with ui.row():
-			state.metadata_status = ui.label("test").classes("text-sm text-gray-400")
+		with ui.row().classes('w-full justify-center items-center shrink-0 bg-neutral-900 pt-4 border-t border-neutral-700'):
+			create_metadata_section()
 
 		# Navigation bar (fixed height, sticks to bottom)
 		with ui.row().classes('relative w-full pb-5 justify-center items-center bg-neutral-900'):

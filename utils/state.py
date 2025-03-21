@@ -24,7 +24,7 @@ def notify(message: str, type: str = "info") -> None:
         if not client.has_socket_connection:
             continue
         with client:
-            ui.notify(message, type=type, close_button="X", position="top-right")
+            ui.notify(message, type=type, close_button="X", position="bottom-right")
 
 class AppState:
 	"""Global state management for the app."""
@@ -41,7 +41,12 @@ class AppState:
 		self.prev_button = None # Previous image button.
 		self.next_button = None # Next image button.	
 		self.nav_txt = "0 / 0"
-		self.app_status = None # Shows text underneath the editor.
+
+		# Status icons in editor
+		self.status_saving = None # Saving metadata.
+		self.status_warn_len = None # Length warning.
+		self.status_warn_chars = None # Special chars warning for EXIF.
+		
 		
 		# Metadata
 		self.metadata_input = None # Field for edit/set metadata.

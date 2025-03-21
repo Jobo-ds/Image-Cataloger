@@ -1,8 +1,8 @@
 :root {
-    --bg-1: #121212;
-    --bg-2: #232323;
-    --bg-3: #323232;    
-    --text-color: #fff;
+	--bg-1: #121212;
+	--bg-2: #232323;
+	--bg-3: #323232;    
+	--text-color: #fff;
   }
 
 
@@ -10,29 +10,40 @@
 
 /* Ensure padding inside autogrow textareas */
 .q-textarea .q-field__native {
-    padding: 20px !important;
-    min-height: 100px !important;
+	padding: 20px !important;
+	min-height: 100px !important;
 }
 
 .q-tab-panels {
-    padding-top: 5px !important;
+	padding-top: 5px !important;
 }
 
 .q-tab-panel {
-    padding: 0 !important;
+	padding: 0 !important;
 }
 
 /* Styling all buttons */
 .q-btn {
-    line-height: 1.715em !important;
-    text-transform: none !important;
-    padding: 0px 16px !important;
-    min-height: 2.572em !important;
+	line-height: 1.715em !important;
+	text-transform: none !important;
+	padding: 0px 16px !important;
+	min-height: 2.572em !important;
 }
 
 /* Custom styles */
 
 .std-btn {
-    background: oklch(0.446 0.03 256.802) !important;
-    color: white !important;
+	background: oklch(0.446 0.03 256.802) !important;
+	color: white !important;
 }
+
+.visible-anim {
+	visibility: visible;
+	opacity: 1;
+	transition: opacity 2s linear;
+  }
+.hidden-anim {
+	visibility: hidden;
+	opacity: 0;
+	transition: visibility 0s 2s, opacity 2s linear;
+  }
