@@ -73,15 +73,15 @@ async def save_metadata_queue():
 					f"{e}")
 
 			finally:
-					await extract_metadata
-					await display_metadata
+					await extract_metadata(state.current_image)
+					await display_metadata(state.current_image)
 					state.metadata_input.props(remove="disable readonly")
 					state.editor_spinner.hide()
 					state.save_queue.task_done()
 					
 
 		except Exception as e:
-			state.error_dialog(
+			state.error_dialog.show(
 				"App has crashed (Critical)",
 				"The background task for saving metadata has crashed. Please restart the app.",
 				{e}

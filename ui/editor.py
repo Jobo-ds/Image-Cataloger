@@ -31,7 +31,7 @@ def create_metadata_section():
 			prod_placeholder = "No image description."
 			with ui.row().classes("w-full justify-center min-height-screen"):
 				validations =  {'Exif limit: 255 characters.': lambda value: len(value) < 255}
-				metadata_input = ui.textarea(placeholder=prod_placeholder, validation=validations).classes("w-full max-w-2xl").props("filled square autogrow v-model='text'")
+				metadata_input = ui.textarea(placeholder=prod_placeholder, validation=validations).classes("w-full max-w-2xl").props("filled square autogrow readonly disable v-model='text'")
 
 		with ui.tab_panel(tab_xmp):
 			with ui.row().classes("w-full justify-center"):

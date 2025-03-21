@@ -73,6 +73,7 @@ async def open_image():
 		state.latest_image_task = asyncio.create_task(load_image(Path(file_path)))
 		await state.latest_image_task
 		state.image_display.classes(remove="w-1/6", add="w-full")
+		state.metadata_input.props(remove="readonly disable")
 
 		# Queue background caching
 		await update_cache_window(state.nav_img_index)
@@ -138,7 +139,6 @@ def cache_image(image_path):
 	Quickly converts the image to a compressed in-memory JPG Base64 string for NiceGUI.
 	"""
 	try:
-		print(f"Caching {image_path.name}")
 		if image_path is None:
 			raise ValueError("Attempted to read None Image.")
 		
