@@ -4,7 +4,7 @@ class StatusIcon:
 	def __init__(self, txt="", icon="sym_o_undo", color="purple-500", classes=""):
 		self.visible = False
 		with ui.icon(icon).classes(f'text-{color} {classes} z-50 text-2xl transition-opacity duration-500 opacity-0 pointer-events-none hidden') as icon_element:
-			ui.tooltip(txt).classes(f'text-base border-{color} border').props('transition-show="fade" transition-hide="fade" transition-duration="800"')
+			ui.tooltip(txt).classes(f'text-base text-black border-{color} bg-{color} border').props('transition-show="fade" transition-hide="fade" transition-duration="800"')
 		self.icon = icon_element
 		
 	def show(self):

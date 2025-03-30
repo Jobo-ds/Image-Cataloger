@@ -45,7 +45,7 @@ def setup_ui():
 			create_metadata_section()
 
 		# Navigation bar (fixed height, sticks to bottom)
-		with ui.row().classes('relative w-full pb-5 justify-center items-center bg-neutral-900'):
+		with ui.row().classes('relative w-full pb-5 pt-5 justify-center items-center bg-neutral-900'):
 			with ui.row().classes('w-full justify-center items-center'):
 				ui.button("Previous", icon="sym_o_arrow_back", on_click=lambda: asyncio.create_task(navigate_prev())).classes('std-btn')
 				index_counter()

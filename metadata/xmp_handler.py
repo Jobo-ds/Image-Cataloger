@@ -19,7 +19,7 @@ async def get_xmp_description(image_path):
 			image_path, 
 			["XMP-dc:Description"])
 		# TODO: Consider getting all languages and implement language selection
-		return metadata[0].get("Description", False)
+		return str(metadata[0].get("Description", False))
 
 	except Exception as e:
 		state.error_dialog.show(
@@ -47,7 +47,7 @@ async def set_xmp_description(image_path, new_description:str):
 			raise FileNotFoundError(f"A required file was not found at either {state.exiftool_path} or {image_path}.")
 
 		metadata_json = {
-			"XMP-dc:Description": new_description
+			"XMP-dc:Description": str(new_description)
 		}
 
 

@@ -4,6 +4,12 @@ import os
 import sys
 from utils.state import state
 import exiftool
+from unidecode import unidecode
+
+def sanitize_for_exif(text: str) -> str:
+	"""Convert to ASCII using transliteration, then strip any remaining non-EXIF-safe characters."""
+	ascii_text = unidecode(text)
+	return ''.join(c for c in ascii_text if 32 <= ord(c) <= 126)
 
 async def get_exif_description(image_path):
 	"""
@@ -18,7 +24,7 @@ async def get_exif_description(image_path):
 			raise FileNotFoundError(f"A required file was not found at either {state.exiftool_path} or {image_path}.")
 
 		metadata = state.exiftool_process.get_tags(image_path, ["EXIF:ImageDescription"])
-		return metadata[0].get("ImageDescription", False)
+		return str(metadata[0].get("ImageDescription", False))
 
 	except Exception as e:
 		state.error_dialog.show(
@@ -49,7 +55,7 @@ async def set_exif_description(image_path, new_description:str):
 			raise FileNotFoundError(f"A required file was not found at either {state.exiftool_path} or {image_path}.")
 
 		metadata_json = {
-			"EXIF:ImageDescription": new_description[0:254]
+			"EXIF:ImageDescription": sanitize_for_exif(str(new_description[0:254]))
 		}
 
 		state.exiftool_process.set_tags(

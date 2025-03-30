@@ -1,5 +1,4 @@
 from utils.state import state, notify
-from utils.string_utils import convert_to_ascii
 from utils.file_utils import cache_image, extract_metadata, display_metadata
 from metadata.exif_handler import set_exif_description
 from metadata.xmp_handler import set_xmp_description
@@ -53,7 +52,7 @@ async def save_metadata_queue():
 					xmp_save_check = await set_xmp_description(state.current_image, new_description)
 				
 				if save_exif:
-					exif_save_check = await set_exif_description(state.current_image, convert_to_ascii(new_description))
+					exif_save_check = await set_exif_description(state.current_image, new_description)
 
 				warnings = []
 				if not xmp_save_check and save_xmp:

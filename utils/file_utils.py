@@ -15,7 +15,6 @@ import numpy as np
 from metadata.exif_handler import get_exif_description
 from metadata.xmp_handler import get_xmp_description
 from utils.dev_tools import display_memory_usage, async_measure_execution_time
-from utils.string_utils import convert_to_ascii
 from utils.state import state
 import config
 
@@ -283,7 +282,7 @@ async def extract_metadata(image_path):
 		if state.xmp_buffer:
 			state.input_buffer = state.xmp_buffer
 		elif state.exif_buffer:
-			state.input_buffer = convert_to_ascii(state.exif_buffer)
+			state.input_buffer = state.exif_buffer
 		else:
 			state.input_buffer = ""
 
