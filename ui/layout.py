@@ -41,7 +41,7 @@ def setup_ui():
 				)
 
 		# Metadata Editor (separate row below image)
-		with ui.row().classes('w-full justify-center items-center shrink-0 bg-neutral-900 pt-4 border-t border-neutral-700'):
+		with ui.row().classes('w-full justify-center items-center bg-neutral-900 pt-4 border-t border-neutral-700'):
 			create_metadata_section()
 
 		# Navigation bar (fixed height, sticks to bottom)

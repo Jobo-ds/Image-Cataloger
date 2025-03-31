@@ -18,34 +18,33 @@ from utils.dev_tools import display_memory_usage, async_measure_execution_time
 from utils.state import state
 import config
 
-
+def open_file_dialog():
+	"""
+	Create a file dialog in tkinter to select an image path.
+	"""
+	root = tk.Tk()
+	root.withdraw()
+	root.attributes('-topmost', True)
+	file_path = filedialog.askopenfilename(
+		title="Select an Image",
+		filetypes=[("Image Files", "*.jpg;*.jpeg;*.png;*.tiff;*.tif")]
+	)
+	root.destroy()
+	return file_path
 
 async def open_image():
 	"""
-	Asynchronously opens a file dialog and loads the selected image.
-	"""	
+	Open a file dialog and start loading an image
+	"""
+	file_path = await asyncio.get_event_loop().run_in_executor(None, open_file_dialog)
+	if file_path:
+		await load_initial_image(file_path)
+
+async def load_initial_image(path: Path):
+	"""
+	Load the initial image, and then start caching.
+	"""
 	async with state.nav_lock:
-		loop = asyncio.get_event_loop()
-
-		# Run the file dialog in a separate thread (since Tkinter is blocking)
-		def select_file():
-			root = tk.Tk()
-			root.withdraw()
-			root.attributes('-topmost', True)
-			file_path = filedialog.askopenfilename(
-				title="Select an Image",
-				filetypes=[("Image Files", "*.jpg;*.jpeg;*.png;*.tiff;*.tif")]
-			)
-			root.destroy()
-			return file_path
-
-		file_path = await loop.run_in_executor(None, select_file)
-
-		if not file_path:
-			print("No file selected.")
-			return
-
-
 		# Cancel previous image loading task if it's still running
 		if state.latest_image_task:
 			state.latest_image_task.cancel()
@@ -61,24 +60,22 @@ async def open_image():
 				)
 
 		# Prepare indexing of images
-		folder = Path(file_path).parent		
+		folder = Path(path).parent		
 		state.nav_folder = folder
 		state.nav_img_list = sorted(folder.glob("*.jpg")) + sorted(folder.glob("*.jpeg")) + sorted(folder.glob("*.png")) + sorted(folder.glob("*.tiff")) + sorted(folder.glob("*.tif"))
-		state.nav_img_index = state.nav_img_list.index(Path(file_path))
+		state.nav_img_index = state.nav_img_list.index(Path(path))
 		state.nav_img_total = len(state.nav_img_list)
 		state.nav_txt = f"{state.nav_img_index + 1} / {state.nav_img_total}"
 		state.nav_counter.refresh()
 
 		# Immediately load and show the first image first!
-		state.latest_image_task = asyncio.create_task(load_image(Path(file_path)))
+		state.latest_image_task = asyncio.create_task(load_image(Path(path)))
 		await state.latest_image_task
 		state.image_display.classes(remove="w-1/6", add="w-full")
 		state.metadata_input.props(remove="readonly disable")
 
 		# Queue background caching
-		await update_cache_window(state.nav_img_index)
-		
-
+		await update_cache_window(state.nav_img_index)		
 
 async def load_image(image_path):
 	"""

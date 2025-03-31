@@ -58,26 +58,26 @@ def create_metadata_section():
 		state.undo_button = ui.button("Undo",icon="sym_o_undo", on_click=lambda: save_metadata(undo=True)).classes(
 				"p-2 absolute right-0").classes('std-btn')
 	
-	with ui.tab_panels(tabs, value=tab_editor).classes('w-full bg-transparent min-h-[130px] max-h-[600px]').props('transition-prev="fade" transition-next="fade"'):
-		with ui.tab_panel(tab_editor):
+	with ui.tab_panels(tabs, value=tab_editor).classes('w-full bg-transparent').props('transition-prev="fade" transition-next="fade"'):
+		with ui.tab_panel(tab_editor).classes("h-[800px]"):
 			with ui.scroll_area():
-				with ui.row().classes("w-full justify-center min-height-screen"):				
+				with ui.row().classes("w-full justify-center"):				
 					state.metadata_input = ui.textarea(placeholder="No image description.", on_change=lambda: update_status_icons()) \
 						.bind_value(state, "input_buffer") \
-						.classes("w-full max-w-2xl") \
+						.classes("w-full max-w-2xl h-32 overflow-y-auto") \
 						.props("filled square autogrow readonly disable")
 
 		with ui.tab_panel(tab_xmp):
 			with ui.scroll_area():
 				with ui.row().classes("w-full justify-center"):
 					state.metadata_xmp = ui.textarea( on_change=lambda: update_status_icons()
-					).classes("w-full max-w-2xl").props("filled square autogrow readonly disable")
+					).classes("w-full max-w-2xl h-32 overflow-y-auto").props("filled square autogrow readonly disable")
 
 		with ui.tab_panel(tab_exif):
 			with ui.scroll_area():
 				with ui.row().classes("w-full justify-center"):
 					state.metadata_exif = ui.textarea( on_change=lambda: update_status_icons()
-					).classes("w-full max-w-2xl ").props("filled square autogrow readonly disable")
+					).classes("w-full max-w-2xl h-32 overflow-y-auto").props("filled square autogrow readonly disable")
 
 	state.metadata_input.on('blur', lambda _: asyncio.create_task(asyncio.sleep(0.1)).add_done_callback(
 		lambda _: asyncio.create_task(save_metadata())

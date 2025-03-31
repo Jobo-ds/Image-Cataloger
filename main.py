@@ -9,6 +9,8 @@ from ui.dialogs import ErrorDialog
 from utils.tasks import save_metadata_queue, cache_worker
 from ui.layout import setup_ui
 from utils.state import state
+from utils.file_utils import load_initial_image
+import config
 
 # Initialize the UI
 setup_ui()
@@ -19,6 +21,11 @@ async def start_background_tasks():
 	asyncio.create_task(save_metadata_queue())
 	if state.bg_cache_task is None or state.bg_cache_task.done():
 		state.bg_cache_task = asyncio.create_task(cache_worker())		 
+
+@app.on_startup
+async def setup_dev():
+	if config.DEVELOPMENT_MODE:
+		asyncio.create_task(load_initial_image(config.AUTOLOAD_DEV_IMAGE))
 
 # Flag to prevent multiple shutdown calls
 shutdown_called = False
