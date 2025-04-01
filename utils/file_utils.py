@@ -16,6 +16,7 @@ from metadata.exif_handler import get_exif_description
 from metadata.xmp_handler import get_xmp_description
 from utils.dev_tools import display_memory_usage, async_measure_execution_time
 from utils.state import state
+from utils.ui_helpers import resize_all_textareas
 import config
 
 def open_file_dialog():
@@ -72,7 +73,7 @@ async def load_initial_image(path: Path):
 		state.latest_image_task = asyncio.create_task(load_image(Path(path)))
 		await state.latest_image_task
 		state.image_display.classes(remove="w-1/6", add="w-full")
-		state.metadata_input.props(remove="readonly disable")
+		state.meta_textarea_input.props(remove="readonly disable")
 
 		# Queue background caching
 		await update_cache_window(state.nav_img_index)		
@@ -258,9 +259,9 @@ async def extract_metadata(image_path):
 	"""
 	try:
 		# Reset buffers
-		state.xmp_buffer = None
-		state.exif_buffer = None
-		state.input_buffer = None
+		state.meta_value_xmp = None
+		state.meta_value_exif = None
+		state.meta_value_input = None
 		state.original_metadata = None
 		
 		# Get file extension in lowercase
@@ -271,17 +272,17 @@ async def extract_metadata(image_path):
 		supported_xmp = {".jpg", ".jpeg", ".tiff", ".tif", ".png"}  # XMP supported formats
 
 		if extension in supported_xmp:
-			state.xmp_buffer = await get_xmp_description(image_path)
+			state.meta_value_xmp = await get_xmp_description(image_path)
 		if extension in supported_exif:
-			state.exif_buffer = await get_exif_description(image_path)
+			state.meta_value_exif = await get_exif_description(image_path)
 
 		# Set input buffer
-		if state.xmp_buffer:
-			state.input_buffer = state.xmp_buffer
-		elif state.exif_buffer:
-			state.input_buffer = state.exif_buffer
+		if state.meta_value_xmp:
+			state.meta_value_input = state.meta_value_xmp
+		elif state.meta_value_exif:
+			state.meta_value_input = state.meta_value_exif
 		else:
-			state.input_buffer = ""
+			state.meta_value_input = ""
 
 	except Exception as e:
 		state.error_dialog.show(
@@ -291,26 +292,21 @@ async def extract_metadata(image_path):
 		
 async def display_metadata():
 	# XMP Field
-	if state.xmp_buffer:
-		state.metadata_xmp.value = state.xmp_buffer
-		state.metadata_xmp.classes(remove="text-italic")
+	if state.meta_value_xmp:
+		state.meta_textarea_xmp.value = state.meta_value_xmp
+		state.meta_textarea_xmp.classes(remove="text-italic")
 	else:
-		state.metadata_xmp.value = "No XMP metadata found."
-		state.metadata_xmp.classes(add="text-italic")
+		state.meta_textarea_xmp.value = "No XMP metadata found."
+		state.meta_textarea_xmp.classes(add="text-italic")
 	
 	# EXIF Field
-	if state.exif_buffer:
-		state.metadata_exif.value = state.exif_buffer
-		state.metadata_exif.classes(remove="text-italic")
+	if state.meta_value_exif:
+		state.meta_textarea_exif.value = state.meta_value_exif
+		state.meta_textarea_exif.classes(remove="text-italic")
 	else:
-		state.metadata_exif.value = "No EXIF metadata found."
-		state.metadata_exif.classes(add="text-italic")
+		state.meta_textarea_exif.value = "No EXIF metadata found."
+		state.meta_textarea_exif.classes(add="text-italic")
 
 	# Input Field
-	state.metadata_input.value = state.input_buffer
-	state.original_metadata = state.metadata_input.value
-
-	# Update UI
-	ui.update(state.metadata_input)
-	ui.update(state.metadata_exif)
-	ui.update(state.metadata_xmp)
+	state.meta_textarea_input.value = state.meta_value_input
+	state.original_metadata = state.meta_textarea_input.value

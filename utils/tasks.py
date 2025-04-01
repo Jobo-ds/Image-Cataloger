@@ -20,7 +20,7 @@ async def save_metadata_queue():
 				continue
 
 			# Disable input field during saving.
-			state.metadata_input.props(add="disable readonly")
+			state.meta_textarea_input.props(add="disable readonly")
 			state.editor_spinner.show()
 			# Get file extension in lowercase
 			extension = state.current_image.suffix.lower()
@@ -39,13 +39,13 @@ async def save_metadata_queue():
 			if extension in supported_exif:
 				save_exif = True
 
-			new_description = state.metadata_input.value
+			new_description = state.meta_textarea_input.value
 
 			if undo and new_description == state.original_metadata:
 				notify("Nothing to undo.")
 
 			elif undo:
-				state.metadata_input.value = state.original_metadata
+				state.meta_textarea_input.value = state.original_metadata
 			
 			try:
 				if save_xmp:
@@ -74,7 +74,7 @@ async def save_metadata_queue():
 			finally:
 					await extract_metadata(state.current_image)
 					await display_metadata()
-					state.metadata_input.props(remove="disable readonly")
+					state.meta_textarea_input.props(remove="disable readonly")
 					state.editor_spinner.hide()
 					state.save_queue.task_done()
 					

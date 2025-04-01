@@ -31,9 +31,9 @@ class AppState:
 	
 	def __init__(self):
 		# Spinners
-		self.app_spinner = None # Spinner for the entire app screen.
+		self.app_spinner = None # Spinner for the entire app screen. (Not currently in use)
 		self.image_spinner = None # Spinner for the current image loaded.
-		self.editor_spinner = None # Spinner for the metadata fields.
+		self.editor_spinner = None # Spinners for the metadata fields.
 		
 		# UI Elements
 		self.image_display = None # Image display ui element.
@@ -47,15 +47,16 @@ class AppState:
 		self.status_warn_len = None # Length warning.
 		self.status_warn_chars = None # Special chars warning for EXIF.
 		
-		
 		# Metadata
-		self.metadata_input = None # Field for edit/set metadata.
-		self.metadata_exif = None # Textarea with EXIF metadata (readonly)
-		self.metadata_xmp = None # TextArea with XMP metadata (readonly)
-		self.metadata_xmp_langs = None # Not used yet. For multi lang support.
-		self.input_buffer = None # Buffer for holding the input value
-		self.xmp_buffer = None # Buffer for holding xmp value
-		self.exif_buffer = None # Buffer forholding exif value
+		self.meta_row_input = None # Row container for metadata input.
+		self.meta_row_exif = None # Row container for EXIF metadata.
+		self.meta_row_xmp = None # Row container for XMP metadata.
+		self.meta_textarea_input = None # Field for edit/set metadata.
+		self.meta_textarea_exif = None # Textarea with EXIF metadata (readonly)
+		self.meta_textarea_xmp = None # TextArea with XMP metadata (readonly)
+		self.meta_value_input = None # Buffer for holding the input value
+		self.meta_value_xmp = None # Buffer for holding xmp value
+		self.meta_value_exif = None # Buffer for holding exif value
 				
 		# Image Data
 		self.current_image = None # Current image path.

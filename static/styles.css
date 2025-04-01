@@ -11,7 +11,6 @@
 /* Ensure padding inside autogrow textareas */
 .q-textarea .q-field__native {
 	padding: 20px !important;
-	min-height: 100px !important;
 }
 
 .q-tab-panels {

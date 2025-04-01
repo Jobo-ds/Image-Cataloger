@@ -11,7 +11,7 @@ async def save_metadata(undo=False):
 			state.error_dialog.show(
 				"Save queue not ready.",
 				"An error occured when creating the save queue task.",
-				str(e)
+				"Save task not initialized."
 			)			
 			return  # Prevents queue operations if it's not initialized
 		await state.save_queue.put(undo)  # Ensures we are putting a valid item
@@ -31,7 +31,7 @@ def update_status_icons():
 		"""
 		return [char for char in text if not (32 <= ord(char) <= 126)]
 
-	text = state.input_buffer or ""
+	text = state.meta_value_input or ""
 
 	if len(text) > 255:
 		state.status_warn_len.show()
@@ -43,11 +43,36 @@ def update_status_icons():
 	else:
 		state.status_warn_chars.hide()
 
+def on_metadata_tab_change(event):
+	label = event.value
+	print(label)
+
+	if label == "Edit Description":
+		component = state.meta_textarea_input
+		container = state.meta_row_input
+	elif label == "View XMP":
+		component = state.meta_textarea_xmp
+		container = state.meta_row_xmp
+	elif label == "View EXIF":
+		component = state.meta_textarea_exif
+		container = state.meta_row_exif
+	else:
+		return
+
+	if container and component:
+		with container:
+			ui.run_javascript(f"""
+				const el = document.getElementById("c{component.id}");
+				if (el) {{
+					el.dispatchEvent(new Event("input"));
+				}}
+			""")
+
 def create_metadata_section():
 	"""
 	Create metadata input, EXIF display, and reset functionality.
 	"""
-	with ui.tabs().classes('w-full max-w-2xl').props('transition-prev="fade" transition-next="fade"') as tabs:
+	with ui.tabs(on_change=on_metadata_tab_change).classes('w-full max-w-2xl').props('transition-prev="fade" transition-next="fade"') as tabs:
 		with ui.row().classes("absolute left-0"):
 			state.status_warn_len = StatusIcon("Description will be truncated in EXIF (Max 255 chars)", icon="sym_o_warning", color="yellow-500")
 			state.status_warn_chars = StatusIcon("This description contains characters not supported by EXIF.", icon="sym_o_emergency_home", color="purple-500")
@@ -59,26 +84,26 @@ def create_metadata_section():
 				"p-2 absolute right-0").classes('std-btn')
 	
 	with ui.tab_panels(tabs, value=tab_editor).classes('w-full bg-transparent').props('transition-prev="fade" transition-next="fade"'):
-		with ui.tab_panel(tab_editor).classes("h-[800px]"):
-			with ui.scroll_area():
-				with ui.row().classes("w-full justify-center"):				
-					state.metadata_input = ui.textarea(placeholder="No image description.", on_change=lambda: update_status_icons()) \
-						.bind_value(state, "input_buffer") \
-						.classes("w-full max-w-2xl h-32 overflow-y-auto") \
+		with ui.tab_panel(tab_editor):
+			with ui.scroll_area().classes("h-[200px]"):
+				with ui.row().classes("w-full justify-center") as state.meta_row_input:				
+					state.meta_textarea_input = ui.textarea(placeholder="No image description.", on_change=lambda: update_status_icons()) \
+						.bind_value(state, "meta_value_input") \
+						.classes("w-full max-w-2xl") \
 						.props("filled square autogrow readonly disable")
 
 		with ui.tab_panel(tab_xmp):
-			with ui.scroll_area():
-				with ui.row().classes("w-full justify-center"):
-					state.metadata_xmp = ui.textarea( on_change=lambda: update_status_icons()
-					).classes("w-full max-w-2xl h-32 overflow-y-auto").props("filled square autogrow readonly disable")
+			with ui.scroll_area().classes("h-[200px]"):
+				with ui.row().classes("w-full justify-center") as state.meta_row_xmp:
+					state.meta_textarea_xmp = ui.textarea( on_change=lambda: update_status_icons()
+					).classes("w-full max-w-2xl").props("filled square autogrow readonly disable")
 
 		with ui.tab_panel(tab_exif):
-			with ui.scroll_area():
-				with ui.row().classes("w-full justify-center"):
-					state.metadata_exif = ui.textarea( on_change=lambda: update_status_icons()
-					).classes("w-full max-w-2xl h-32 overflow-y-auto").props("filled square autogrow readonly disable")
+			with ui.scroll_area().classes("h-[200px]"):
+				with ui.row().classes("w-full justify-center") as state.meta_row_exif:
+					state.meta_textarea_exif = ui.textarea( on_change=lambda: update_status_icons()
+					).classes("w-full max-w-2xl").props("filled square autogrow readonly disable")
 
-	state.metadata_input.on('blur', lambda _: asyncio.create_task(asyncio.sleep(0.1)).add_done_callback(
+	state.meta_textarea_input.on('blur', lambda _: asyncio.create_task(asyncio.sleep(0.1)).add_done_callback(
 		lambda _: asyncio.create_task(save_metadata())
 	))
