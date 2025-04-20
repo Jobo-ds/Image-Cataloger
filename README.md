@@ -1,6 +1,7 @@
 # Image Cataloger
  A small GUI to add descriptions to images in EXIF and XMP.
 
+# WARNING: UNTESTED, DO NOT USE IN PROD.
 
 # Credits
 
